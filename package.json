@@ -1,0 +1,29 @@
+{
+  "name": "dark-factory-remotion-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Railway-ready Remotion render worker for the Dark Factory stack",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1019.0",
+    "@remotion/bundler": "^4.0.441",
+    "@remotion/renderer": "^4.0.441",
+    "express": "^5.1.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.20",
+    "@types/node": "^22.6.5",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.2",
+    "typescript": "^5.9.3"
+  }
+}
