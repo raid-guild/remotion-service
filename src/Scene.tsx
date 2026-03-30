@@ -7,19 +7,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
-
-interface SegmentMetadata {
-  speaker: string;
-  url: string;
-  durationMs: number;
-  color?: string;
-}
-
-interface SceneProps {
-  title?: string;
-  accent?: string;
-  segments?: SegmentMetadata[];
-}
+import { getDurationFromSegments, getSegmentFrames, type SceneProps } from "./segmentTiming";
 
 const bulletLines = [
   "Orchestrate render requests from any API.",
@@ -34,14 +22,7 @@ export const AnimatedScene: React.FC<SceneProps> = ({
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
-  const totalSegmentFrames = segments.reduce((acc, segment) => {
-    const segmentFrames = Math.max(
-      1,
-      Math.ceil((segment.durationMs ?? 0) / 1000) * fps,
-    );
-    return acc + segmentFrames;
-  }, 0);
-  const effectiveDuration = Math.max(durationInFrames, totalSegmentFrames, fps * 5);
+  const effectiveDuration = Math.max(durationInFrames, getDurationFromSegments(segments, fps));
   const pulse = interpolate(frame % (fps * 2), [0, fps, fps * 2], [0.3, 1, 0.3], {
     extrapolateRight: "clamp",
   });
@@ -62,10 +43,7 @@ export const AnimatedScene: React.FC<SceneProps> = ({
       }}
     >
       {segments.map((segment) => {
-        const segmentFrames = Math.max(
-          1,
-          Math.ceil((segment.durationMs ?? 0) / 1000) * fps,
-        );
+        const segmentFrames = getSegmentFrames(segment.durationMs, fps);
         const startFrame = runningFrame;
         runningFrame += segmentFrames;
         return (

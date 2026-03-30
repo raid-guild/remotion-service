@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { REMOTION_COMPOSITION_ID } from "./constants.js";
+import { type SegmentMetadata } from "./segmentTiming.js";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const DEFAULT_PREFIX = "remotion";
@@ -50,7 +51,16 @@ app.disable("x-powered-by");
 app.use(express.json({ limit: "1mb" }));
 
 app.use((req, _res, next) => {
-  console.log("Incoming request", { method: req.method, path: req.path, body: req.body });
+  const body = req.body as Record<string, unknown> | undefined;
+  const props = body?.props as Record<string, unknown> | undefined;
+  console.log("Incoming request", {
+    method: req.method,
+    path: req.path,
+    composition: body?.composition,
+    outputKey: body?.outputKey,
+    title: props?.title,
+    segmentCount: Array.isArray(props?.segments) ? props.segments.length : undefined,
+  });
   next();
 });
 
@@ -106,6 +116,39 @@ async function uploadToS3(localPath: string, key: string): Promise<void> {
   );
 }
 
+function normalizeSegments(input: unknown): SegmentMetadata[] {
+  if (input === undefined) return [];
+  if (!Array.isArray(input)) {
+    throw new Error("`props.segments` must be an array.");
+  }
+
+  return input.map((segment, index) => {
+    if (typeof segment !== "object" || segment === null) {
+      throw new Error(`Segment at index ${index} must be an object.`);
+    }
+
+    const candidate = segment as Partial<SegmentMetadata>;
+    const speaker = typeof candidate.speaker === "string" ? candidate.speaker.trim() : "";
+    const url = typeof candidate.url === "string" ? candidate.url.trim() : "";
+    const durationMs = Number(candidate.durationMs);
+
+    if (!url) {
+      throw new Error(`Segment at index ${index} is missing a valid \`url\`.`);
+    }
+
+    if (!Number.isFinite(durationMs) || durationMs <= 0) {
+      throw new Error(`Segment at index ${index} must include a positive \`durationMs\`.`);
+    }
+
+    return {
+      speaker: speaker || `segment-${index + 1}`,
+      url,
+      durationMs,
+      color: typeof candidate.color === "string" ? candidate.color : undefined,
+    };
+  });
+}
+
 app.get("/healthz", (_req, res) => {
   res.sendStatus(200);
 });
@@ -131,13 +174,17 @@ app.get("/compositions", async (_req, res) => {
 
 app.post("/render", async (req, res) => {
   const composition = String(req.body.composition ?? REMOTION_COMPOSITION_ID);
-  const props =
-    typeof req.body.props === "object" && req.body.props !== null ? req.body.props : {};
   const requestedKey = typeof req.body.outputKey === "string" ? req.body.outputKey.trim() : undefined;
   const outputKey = composeKey(requestedKey, composition);
   const tmpFile = path.join(tmpdir(), `remotion-${randomUUID()}.mp4`);
 
   try {
+    const rawProps =
+      typeof req.body.props === "object" && req.body.props !== null ? req.body.props : {};
+    const props = {
+      ...rawProps,
+      segments: normalizeSegments((rawProps as Record<string, unknown>).segments),
+    };
     console.log("Render requested", {
       composition,
       propsPreview: {
@@ -150,18 +197,14 @@ app.post("/render", async (req, res) => {
     const videoConfig = await selectComposition({
       serveUrl,
       id: composition,
-      onBrowserDownload: ({ chromeMode }) => ({
-        version: null,
-        onProgress: ({ percent, downloadedBytes, totalSizeInBytes, alreadyAvailable }) => {
-          console.log("Chromium download progress:", {
-            chromeMode,
-            percent,
-            downloadedBytes,
-            totalSizeInBytes,
-            alreadyAvailable,
-          });
-        },
-      }),
+      inputProps: props,
+      onBrowserDownload: ({ chromeMode }) => {
+        console.log("Ensuring Chromium is available", { chromeMode });
+        return {
+          version: null,
+          onProgress: () => undefined,
+        };
+      },
     });
     console.log("renderMedia start", { composition, outputLocation: tmpFile });
     await renderMedia({
@@ -170,7 +213,14 @@ app.post("/render", async (req, res) => {
       outputLocation: tmpFile,
       inputProps: props,
       codec: "h264",
+      enforceAudioTrack: true,
       jpegQuality: 90,
+      logLevel: "error",
+      onBrowserLog: ({ text, type }) => {
+        if (type === "warning" || type === "error") {
+          console.warn("Browser log", { type, text });
+        }
+      },
     });
     console.log("renderMedia complete", { composition, outputLocation: tmpFile });
 
@@ -183,8 +233,14 @@ app.post("/render", async (req, res) => {
       endpoint,
     });
   } catch (error) {
+    const detail = (error as Error)?.message ?? "Unknown render error";
+    const isValidationError =
+      detail.includes("`props.segments`") || detail.includes("Segment at index");
     console.error("Render failed", error);
-    res.status(500).json({ error: "Render failed", detail: (error as Error)?.message });
+    res.status(isValidationError ? 400 : 500).json({
+      error: isValidationError ? "Invalid render input" : "Render failed",
+      detail,
+    });
   } finally {
     await rm(tmpFile, { force: true });
   }
