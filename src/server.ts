@@ -124,6 +124,18 @@ async function uploadToS3(localPath: string, key: string): Promise<void> {
   );
 }
 
+async function cleanupRenderArtifacts(options: {
+  cleanupLocalizedSegments: (() => Promise<void>) | null;
+  tmpFile: string;
+}): Promise<void> {
+  const { cleanupLocalizedSegments, tmpFile } = options;
+  if (cleanupLocalizedSegments) {
+    await cleanupLocalizedSegments();
+  }
+
+  await rm(tmpFile, { force: true });
+}
+
 function getAssetExtension(url: string, contentType: string | null): string {
   const pathname = new URL(url).pathname;
   const ext = path.extname(pathname);
@@ -523,6 +535,12 @@ app.post("/render", async (req, res) => {
     await uploadToS3(tmpFile, outputKey);
     console.log("uploadToS3 complete", { bucket: bucketName, key: outputKey });
 
+    console.log("Sending render response", {
+      bucket: bucketName,
+      key: outputKey,
+      endpoint,
+    });
+
     res.status(201).json({
       bucket: bucketName,
       key: outputKey,
@@ -538,10 +556,25 @@ app.post("/render", async (req, res) => {
       detail,
     });
   } finally {
-    if (cleanupLocalizedSegments) {
-      await cleanupLocalizedSegments();
+    const cleanupTask = cleanupRenderArtifacts({
+      cleanupLocalizedSegments,
+      tmpFile,
+    }).then(() => {
+      console.log("Render cleanup complete", { outputKey });
+    });
+
+    if (res.headersSent) {
+      void cleanupTask.catch((error) => {
+        console.error("Render cleanup failed after response", error);
+      });
+      return;
     }
-    await rm(tmpFile, { force: true });
+
+    try {
+      await cleanupTask;
+    } catch (error) {
+      console.error("Render cleanup failed before response", error);
+    }
   }
 });
 
