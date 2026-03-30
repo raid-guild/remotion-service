@@ -1,14 +1,24 @@
 import React from "react";
 import {
   AbsoluteFill,
+  Audio,
   interpolate,
+  Sequence,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
 
+interface SegmentMetadata {
+  speaker: string;
+  url: string;
+  durationMs: number;
+  color?: string;
+}
+
 interface SceneProps {
   title?: string;
   accent?: string;
+  segments?: SegmentMetadata[];
 }
 
 const bulletLines = [
@@ -20,15 +30,26 @@ const bulletLines = [
 export const AnimatedScene: React.FC<SceneProps> = ({
   title = "Dark Factory Render",
   accent = "#5ef1ff",
+  segments = [],
 }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, durationInFrames } = useVideoConfig();
+  const totalSegmentFrames = segments.reduce((acc, segment) => {
+    const segmentFrames = Math.max(
+      1,
+      Math.ceil((segment.durationMs ?? 0) / 1000) * fps,
+    );
+    return acc + segmentFrames;
+  }, 0);
+  const effectiveDuration = Math.max(durationInFrames, totalSegmentFrames, fps * 5);
   const pulse = interpolate(frame % (fps * 2), [0, fps, fps * 2], [0.3, 1, 0.3], {
     extrapolateRight: "clamp",
   });
-  const progress = interpolate(frame, [0, fps * 3], [0, 1], {
+  const progress = interpolate(frame, [0, effectiveDuration], [0, 1], {
     extrapolateRight: "clamp",
   });
+
+  let runningFrame = 0;
 
   return (
     <AbsoluteFill
@@ -40,6 +61,24 @@ export const AnimatedScene: React.FC<SceneProps> = ({
         overflow: "hidden",
       }}
     >
+      {segments.map((segment) => {
+        const segmentFrames = Math.max(
+          1,
+          Math.ceil((segment.durationMs ?? 0) / 1000) * fps,
+        );
+        const startFrame = runningFrame;
+        runningFrame += segmentFrames;
+        return (
+          <Sequence
+            key={`${segment.speaker}-${startFrame}`}
+            durationInFrames={segmentFrames}
+            from={startFrame}
+          >
+            <Audio src={segment.url} />
+          </Sequence>
+        );
+      })}
+
       <div
         style={{
           position: "absolute",
