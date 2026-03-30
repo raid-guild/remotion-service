@@ -34,5 +34,5 @@ COPY --from=builder /app/src ./src
 COPY --from=builder /app/remotion.config.ts ./
 COPY --from=builder /app/tsconfig.json ./
 EXPOSE 3000
-ENTRYPOINT [\"tini\", \"--\"]
-CMD [\"node\", \"dist/server.js\"]
+ENTRYPOINT ["tini", "--"]
+CMD ["node", "dist/server.js"]

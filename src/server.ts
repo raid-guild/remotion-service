@@ -7,7 +7,7 @@ import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { REMOTION_COMPOSITION_ID } from "./constants";
+import { REMOTION_COMPOSITION_ID } from "./constants.js";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const DEFAULT_PREFIX = "remotion";
