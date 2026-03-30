@@ -8,8 +8,8 @@ RUN npm run build
 FROM node:22-bookworm
 ENV NODE_ENV=production
 WORKDIR /app
-RUN apt-get update \
-  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+RUN apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     tini \
     libnss3 \
     libdbus-1-3 \
@@ -25,8 +25,8 @@ RUN apt-get update \
     libcairo2 \
     libpango-1.0-0 \
     libatk-bridge2.0-0 \
-    ffmpeg \
-  && rm -rf /var/lib/apt/lists/*
+    ffmpeg
+RUN rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=builder /app/dist ./dist
