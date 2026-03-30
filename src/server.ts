@@ -134,7 +134,22 @@ app.post("/render", async (req, res) => {
 
   try {
     const serveUrl = await ensureBundle();
-    const videoConfig = await selectComposition({ serveUrl, id: composition });
+    const videoConfig = await selectComposition({
+      serveUrl,
+      id: composition,
+      onBrowserDownload: ({ chromeMode }) => ({
+        version: null,
+        onProgress: ({ percent, downloadedBytes, totalSizeInBytes, alreadyAvailable }) => {
+          console.log("Chromium download progress:", {
+            chromeMode,
+            percent,
+            downloadedBytes,
+            totalSizeInBytes,
+            alreadyAvailable,
+          });
+        },
+      }),
+    });
     await renderMedia({
       serveUrl,
       composition: videoConfig,
