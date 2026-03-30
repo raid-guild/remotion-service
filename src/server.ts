@@ -10,10 +10,10 @@ import { randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { REMOTION_COMPOSITION_ID } from "./constants.js";
-import { type SegmentMetadata } from "./segmentTiming.js";
+import { type SceneProps, type SegmentMetadata } from "./segmentTiming.js";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const DEFAULT_PREFIX = "remotion";
@@ -52,6 +52,7 @@ const s3Client = new S3Client({
 });
 const execFileAsync = promisify(execFile);
 const localAssetRegistry = new Map<string, { filePath: string; contentType: string }>();
+const WAVEFORM_BAR_COUNT = 72;
 
 const app = express();
 app.disable("x-powered-by");
@@ -151,13 +152,163 @@ async function probeAudio(filePath: string): Promise<void> {
   }
 }
 
+function allocateWaveformBars(durationsMs: number[], totalBars: number): number[] {
+  if (durationsMs.length === 0) {
+    return [];
+  }
+
+  const totalDurationMs = durationsMs.reduce((sum, duration) => sum + duration, 0);
+  if (totalDurationMs <= 0) {
+    return durationsMs.map((_duration, index) => (index === 0 ? totalBars : 0));
+  }
+
+  const allocations = durationsMs.map((duration) => (duration / totalDurationMs) * totalBars);
+  const base = allocations.map((value) => Math.floor(value));
+  let assigned = base.reduce((sum, value) => sum + value, 0);
+
+  if (durationsMs.length <= totalBars) {
+    for (let index = 0; index < base.length; index += 1) {
+      if (base[index] === 0) {
+        base[index] = 1;
+        assigned += 1;
+      }
+    }
+  }
+
+  while (assigned > totalBars) {
+    const candidate = base.findIndex((value) => value > 1);
+    if (candidate === -1) {
+      break;
+    }
+    base[candidate] -= 1;
+    assigned -= 1;
+  }
+
+  const remainderOrder = allocations
+    .map((value, index) => ({
+      index,
+      remainder: value - Math.floor(value),
+    }))
+    .sort((left, right) => right.remainder - left.remainder);
+
+  let cursor = 0;
+  while (assigned < totalBars && remainderOrder.length > 0) {
+    base[remainderOrder[cursor % remainderOrder.length].index] += 1;
+    assigned += 1;
+    cursor += 1;
+  }
+
+  return base;
+}
+
+async function extractWaveformSamples(filePath: string, sampleCount: number): Promise<number[]> {
+  if (sampleCount <= 0) {
+    return [];
+  }
+
+  const pcm = await new Promise<Buffer>((resolve, reject) => {
+    const ffmpeg = spawn("ffmpeg", [
+      "-v",
+      "error",
+      "-i",
+      filePath,
+      "-ac",
+      "1",
+      "-ar",
+      "1200",
+      "-f",
+      "f32le",
+      "pipe:1",
+    ]);
+
+    const chunks: Buffer[] = [];
+    const stderr: Buffer[] = [];
+
+    ffmpeg.stdout.on("data", (chunk: Buffer) => {
+      chunks.push(chunk);
+    });
+
+    ffmpeg.stderr.on("data", (chunk: Buffer) => {
+      stderr.push(chunk);
+    });
+
+    ffmpeg.on("error", reject);
+    ffmpeg.on("close", (code) => {
+      if (code !== 0) {
+        reject(
+          new Error(
+            `ffmpeg failed while extracting waveform from ${filePath}: ${Buffer.concat(stderr).toString("utf8")}`,
+          ),
+        );
+        return;
+      }
+
+      resolve(Buffer.concat(chunks));
+    });
+  });
+
+  const floatCount = Math.floor(pcm.length / 4);
+  if (floatCount === 0) {
+    return Array.from({ length: sampleCount }, () => 0);
+  }
+
+  const amplitudes = Array.from({ length: floatCount }, (_value, index) => {
+    return Math.abs(pcm.readFloatLE(index * 4));
+  });
+
+  const samplesPerBucket = Math.max(1, Math.floor(amplitudes.length / sampleCount));
+
+  return Array.from({ length: sampleCount }, (_value, index) => {
+    const start = index * samplesPerBucket;
+    const end = index === sampleCount - 1 ? amplitudes.length : Math.min(amplitudes.length, start + samplesPerBucket);
+    if (start >= amplitudes.length) {
+      return 0;
+    }
+
+    let sumSquares = 0;
+    for (let cursor = start; cursor < end; cursor += 1) {
+      sumSquares += amplitudes[cursor] * amplitudes[cursor];
+    }
+
+    return Math.sqrt(sumSquares / Math.max(1, end - start));
+  });
+}
+
+async function buildWaveform(filePaths: string[], durationsMs: number[]): Promise<number[]> {
+  if (filePaths.length === 0) {
+    return Array.from({ length: WAVEFORM_BAR_COUNT }, () => 0.12);
+  }
+
+  const barsPerSegment = allocateWaveformBars(durationsMs, WAVEFORM_BAR_COUNT);
+  const segmentSamples = await Promise.all(
+    filePaths.map((filePath, index) => extractWaveformSamples(filePath, barsPerSegment[index] ?? 0)),
+  );
+
+  const merged = segmentSamples.flat().slice(0, WAVEFORM_BAR_COUNT);
+  while (merged.length < WAVEFORM_BAR_COUNT) {
+    merged.push(0);
+  }
+
+  const max = merged.reduce((currentMax, value) => Math.max(currentMax, value), 0);
+  if (max === 0) {
+    return merged.map(() => 0.12);
+  }
+
+  return merged.map((value) => {
+    const normalized = value / max;
+    return Number((0.12 + normalized * 0.88).toFixed(4));
+  });
+}
+
 async function localizeSegments(segments: SegmentMetadata[]): Promise<{
   localizedSegments: SegmentMetadata[];
+  localFilePaths: string[];
   cleanup: () => Promise<void>;
 }> {
   if (segments.length === 0) {
     return {
       localizedSegments: segments,
+      localFilePaths: [],
       cleanup: () => Promise.resolve(),
     };
   }
@@ -166,6 +317,7 @@ async function localizeSegments(segments: SegmentMetadata[]): Promise<{
   const registeredAssetIds: string[] = [];
 
   try {
+    const localFilePaths: string[] = [];
     const localizedSegments = await Promise.all(
       segments.map(async (segment, index) => {
         console.log("Downloading segment asset", {
@@ -196,6 +348,7 @@ async function localizeSegments(segments: SegmentMetadata[]): Promise<{
         );
         await access(filePath);
         await probeAudio(filePath);
+        localFilePaths[index] = filePath;
 
         const assetId = randomUUID();
         registeredAssetIds.push(assetId);
@@ -217,6 +370,7 @@ async function localizeSegments(segments: SegmentMetadata[]): Promise<{
 
     return {
       localizedSegments,
+      localFilePaths,
       cleanup: async () => {
         registeredAssetIds.forEach((assetId) => localAssetRegistry.delete(assetId));
         await rm(assetDir, { recursive: true, force: true });
@@ -307,17 +461,23 @@ app.post("/render", async (req, res) => {
     const rawProps =
       typeof req.body.props === "object" && req.body.props !== null ? req.body.props : {};
     const normalizedSegments = normalizeSegments((rawProps as Record<string, unknown>).segments);
-    const { localizedSegments, cleanup } = await localizeSegments(normalizedSegments);
+    const { localizedSegments, localFilePaths, cleanup } = await localizeSegments(normalizedSegments);
     cleanupLocalizedSegments = cleanup;
-    const props = {
+    const waveform = await buildWaveform(
+      localFilePaths,
+      normalizedSegments.map((segment) => segment.durationMs),
+    );
+    const props: SceneProps & Record<string, unknown> = {
       ...rawProps,
       segments: localizedSegments,
+      waveform,
     };
     console.log("Render requested", {
       composition,
       propsPreview: {
         title: props?.title,
         segments: Array.isArray(props?.segments) ? props.segments.length : undefined,
+        waveformBars: props.waveform?.length,
       },
       outputKey,
     });

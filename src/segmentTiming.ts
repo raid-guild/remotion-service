@@ -9,6 +9,7 @@ export interface SceneProps {
   title?: string;
   accent?: string;
   segments?: SegmentMetadata[];
+  waveform?: number[];
 }
 
 export const DEFAULT_FPS = 30;
