@@ -2,11 +2,16 @@ import express from "express";
 import { bundle } from "@remotion/bundler";
 import { getCompositions, renderMedia, selectComposition } from "@remotion/renderer";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { createReadStream } from "node:fs";
-import { rm } from "node:fs/promises";
+import { createReadStream, createWriteStream } from "node:fs";
+import { access, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import type { ReadableStream as NodeReadableStream } from "node:stream/web";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { REMOTION_COMPOSITION_ID } from "./constants.js";
 import { type SegmentMetadata } from "./segmentTiming.js";
 
@@ -45,6 +50,8 @@ const s3Client = new S3Client({
   endpoint,
   forcePathStyle,
 });
+const execFileAsync = promisify(execFile);
+const localAssetRegistry = new Map<string, { filePath: string; contentType: string }>();
 
 const app = express();
 app.disable("x-powered-by");
@@ -116,6 +123,112 @@ async function uploadToS3(localPath: string, key: string): Promise<void> {
   );
 }
 
+function getAssetExtension(url: string, contentType: string | null): string {
+  const pathname = new URL(url).pathname;
+  const ext = path.extname(pathname);
+  if (ext) return ext;
+
+  if (contentType?.includes("mpeg")) return ".mp3";
+  if (contentType?.includes("wav")) return ".wav";
+  if (contentType?.includes("mp4")) return ".m4a";
+  if (contentType?.includes("aac")) return ".aac";
+  if (contentType?.includes("ogg")) return ".ogg";
+  return ".bin";
+}
+
+async function probeAudio(filePath: string): Promise<void> {
+  const { stdout } = await execFileAsync("ffprobe", [
+    "-v",
+    "error",
+    "-show_streams",
+    "-select_streams",
+    "a:0",
+    filePath,
+  ]);
+
+  if (!stdout.includes("[STREAM]")) {
+    throw new Error(`Downloaded asset does not contain an audio stream: ${filePath}`);
+  }
+}
+
+async function localizeSegments(segments: SegmentMetadata[]): Promise<{
+  localizedSegments: SegmentMetadata[];
+  cleanup: () => Promise<void>;
+}> {
+  if (segments.length === 0) {
+    return {
+      localizedSegments: segments,
+      cleanup: () => Promise.resolve(),
+    };
+  }
+
+  const assetDir = await mkdtemp(path.join(tmpdir(), "remotion-audio-"));
+  const registeredAssetIds: string[] = [];
+
+  try {
+    const localizedSegments = await Promise.all(
+      segments.map(async (segment, index) => {
+        console.log("Downloading segment asset", {
+          index,
+          speaker: segment.speaker,
+          source: segment.url,
+        });
+
+        const response = await fetch(segment.url);
+        if (!response.ok || !response.body) {
+          throw new Error(
+            `Failed to download segment ${index} from source URL: HTTP ${response.status}`,
+          );
+        }
+
+        const contentType = response.headers.get("content-type") ?? "application/octet-stream";
+        const filePath = path.join(
+          assetDir,
+          `${String(index).padStart(2, "0")}-${randomUUID()}${getAssetExtension(
+            segment.url,
+            contentType,
+          )}`,
+        );
+
+        await pipeline(
+          Readable.fromWeb(response.body as unknown as NodeReadableStream),
+          createWriteStream(filePath),
+        );
+        await access(filePath);
+        await probeAudio(filePath);
+
+        const assetId = randomUUID();
+        registeredAssetIds.push(assetId);
+        localAssetRegistry.set(assetId, { filePath, contentType });
+
+        console.log("Segment asset ready", {
+          index,
+          speaker: segment.speaker,
+          contentType,
+          localAssetId: assetId,
+        });
+
+        return {
+          ...segment,
+          url: `http://127.0.0.1:${PORT}/render-assets/${assetId}`,
+        };
+      }),
+    );
+
+    return {
+      localizedSegments,
+      cleanup: async () => {
+        registeredAssetIds.forEach((assetId) => localAssetRegistry.delete(assetId));
+        await rm(assetDir, { recursive: true, force: true });
+      },
+    };
+  } catch (error) {
+    registeredAssetIds.forEach((assetId) => localAssetRegistry.delete(assetId));
+    await rm(assetDir, { recursive: true, force: true });
+    throw error;
+  }
+}
+
 function normalizeSegments(input: unknown): SegmentMetadata[] {
   if (input === undefined) return [];
   if (!Array.isArray(input)) {
@@ -153,6 +266,17 @@ app.get("/healthz", (_req, res) => {
   res.sendStatus(200);
 });
 
+app.get("/render-assets/:assetId", (req, res) => {
+  const asset = localAssetRegistry.get(req.params.assetId);
+  if (!asset) {
+    res.sendStatus(404);
+    return;
+  }
+
+  res.setHeader("Content-Type", asset.contentType);
+  createReadStream(asset.filePath).pipe(res);
+});
+
 app.get("/compositions", async (_req, res) => {
   try {
     const serveUrl = await ensureBundle();
@@ -177,13 +301,17 @@ app.post("/render", async (req, res) => {
   const requestedKey = typeof req.body.outputKey === "string" ? req.body.outputKey.trim() : undefined;
   const outputKey = composeKey(requestedKey, composition);
   const tmpFile = path.join(tmpdir(), `remotion-${randomUUID()}.mp4`);
+  let cleanupLocalizedSegments: (() => Promise<void>) | null = null;
 
   try {
     const rawProps =
       typeof req.body.props === "object" && req.body.props !== null ? req.body.props : {};
+    const normalizedSegments = normalizeSegments((rawProps as Record<string, unknown>).segments);
+    const { localizedSegments, cleanup } = await localizeSegments(normalizedSegments);
+    cleanupLocalizedSegments = cleanup;
     const props = {
       ...rawProps,
-      segments: normalizeSegments((rawProps as Record<string, unknown>).segments),
+      segments: localizedSegments,
     };
     console.log("Render requested", {
       composition,
@@ -216,6 +344,14 @@ app.post("/render", async (req, res) => {
       enforceAudioTrack: true,
       jpegQuality: 90,
       logLevel: "error",
+      onDownload: (src) => {
+        console.log("Renderer downloading media", { src });
+        return ({ percent, downloaded, totalSize }) => {
+          if (percent === 1 || (totalSize !== null && downloaded >= totalSize)) {
+            console.log("Renderer media download complete", { src, downloaded, totalSize });
+          }
+        };
+      },
       onBrowserLog: ({ text, type }) => {
         if (type === "warning" || type === "error") {
           console.warn("Browser log", { type, text });
@@ -242,6 +378,9 @@ app.post("/render", async (req, res) => {
       detail,
     });
   } finally {
+    if (cleanupLocalizedSegments) {
+      await cleanupLocalizedSegments();
+    }
     await rm(tmpFile, { force: true });
   }
 });
