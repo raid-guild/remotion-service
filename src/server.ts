@@ -49,6 +49,11 @@ const app = express();
 app.disable("x-powered-by");
 app.use(express.json({ limit: "1mb" }));
 
+app.use((req, _res, next) => {
+  console.log("Incoming request", { method: req.method, path: req.path, body: req.body });
+  next();
+});
+
 type BundleResult = Awaited<ReturnType<typeof bundle>>;
 
 let bundleCache: BundleResult | null = null;
@@ -133,6 +138,14 @@ app.post("/render", async (req, res) => {
   const tmpFile = path.join(tmpdir(), `remotion-${randomUUID()}.mp4`);
 
   try {
+    console.log("Render requested", {
+      composition,
+      propsPreview: {
+        title: props?.title,
+        segments: Array.isArray(props?.segments) ? props.segments.length : undefined,
+      },
+      outputKey,
+    });
     const serveUrl = await ensureBundle();
     const videoConfig = await selectComposition({
       serveUrl,
@@ -150,6 +163,7 @@ app.post("/render", async (req, res) => {
         },
       }),
     });
+    console.log("renderMedia start", { composition, outputLocation: tmpFile });
     await renderMedia({
       serveUrl,
       composition: videoConfig,
@@ -158,8 +172,10 @@ app.post("/render", async (req, res) => {
       codec: "h264",
       jpegQuality: 90,
     });
+    console.log("renderMedia complete", { composition, outputLocation: tmpFile });
 
     await uploadToS3(tmpFile, outputKey);
+    console.log("uploadToS3 complete", { bucket: bucketName, key: outputKey });
 
     res.status(201).json({
       bucket: bucketName,
