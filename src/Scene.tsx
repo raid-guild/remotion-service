@@ -3,8 +3,8 @@ import {
   AbsoluteFill,
   Audio,
   Img,
-  interpolate,
   Sequence,
+  interpolate,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
@@ -17,9 +17,28 @@ const brand = {
   moloch500: "#bd482d",
   moloch800: "#29100a",
   scroll100: "#f9f7e7",
+  scroll150: "#f3eeca",
   scroll200: "#ece5ac",
-  scroll500: "#b5a22c",
   scroll700: "#534a13",
+};
+
+const splitTitle = (title: string): { primary: string; secondary: string | null } => {
+  const separators = [" — ", " – ", " - "];
+
+  for (const separator of separators) {
+    if (title.includes(separator)) {
+      const [primary, ...rest] = title.split(separator);
+      return {
+        primary: primary.trim(),
+        secondary: rest.join(separator).trim() || null,
+      };
+    }
+  }
+
+  return {
+    primary: title,
+    secondary: null,
+  };
 };
 
 export const AnimatedScene: React.FC<SceneProps> = ({
@@ -31,10 +50,10 @@ export const AnimatedScene: React.FC<SceneProps> = ({
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
   const effectiveDuration = Math.max(durationInFrames, getDurationFromSegments(segments, fps));
-  const pulse = interpolate(frame % (fps * 2), [0, fps, fps * 2], [0.3, 1, 0.3], {
+  const progress = interpolate(frame, [0, effectiveDuration], [0, 1], {
     extrapolateRight: "clamp",
   });
-  const progress = interpolate(frame, [0, effectiveDuration], [0, 1], {
+  const pulse = interpolate(frame % (fps * 2), [0, fps, fps * 2], [0.92, 1.08, 0.92], {
     extrapolateRight: "clamp",
   });
 
@@ -55,14 +74,13 @@ export const AnimatedScene: React.FC<SceneProps> = ({
     };
   });
 
-  const visibleSegments = timeline.slice(0, 4);
-  const activeSegmentIndex = timeline.findIndex(
-    (segment) => frame >= segment.startFrame && frame < segment.endFrame,
-  );
+  const activeSegment =
+    timeline.find((segment) => frame >= segment.startFrame && frame < segment.endFrame) ?? null;
   const activeWaveformIndex = Math.min(
     waveformBars.length - 1,
     Math.max(0, Math.floor(progress * waveformBars.length)),
   );
+  const { primary, secondary } = splitTitle(title);
 
   return (
     <AbsoluteFill
@@ -73,22 +91,20 @@ export const AnimatedScene: React.FC<SceneProps> = ({
         overflow: "hidden",
       }}
     >
-      {timeline.map((segment) => {
-        return (
-          <Sequence
-            key={`${segment.speaker}-${segment.startFrame}`}
-            durationInFrames={segment.segmentFrames}
-            from={segment.startFrame}
-          >
-            <Audio src={segment.url} />
-          </Sequence>
-        );
-      })}
+      {timeline.map((segment) => (
+        <Sequence
+          key={`${segment.speaker}-${segment.startFrame}`}
+          durationInFrames={segment.segmentFrames}
+          from={segment.startFrame}
+        >
+          <Audio src={segment.url} />
+        </Sequence>
+      ))}
 
       <AbsoluteFill
         style={{
           background:
-            "radial-gradient(circle at 18% 16%, rgba(189,72,45,0.20), transparent 28%), radial-gradient(circle at 80% 18%, rgba(181,162,44,0.22), transparent 24%), linear-gradient(135deg, #f9f7e7 0%, #ece5ac 100%)",
+            "linear-gradient(135deg, #f9f7e7 0%, #f3eeca 56%, #ece5ac 100%)",
         }}
       />
 
@@ -97,9 +113,9 @@ export const AnimatedScene: React.FC<SceneProps> = ({
           position: "absolute",
           inset: 0,
           backgroundImage:
-            "linear-gradient(rgba(41,16,10,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(41,16,10,0.08) 1px, transparent 1px)",
-          backgroundSize: "42px 42px",
-          opacity: 0.28,
+            "linear-gradient(rgba(41,16,10,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(41,16,10,0.06) 1px, transparent 1px)",
+          backgroundSize: "48px 48px",
+          opacity: 0.24,
         }}
       />
 
@@ -109,7 +125,7 @@ export const AnimatedScene: React.FC<SceneProps> = ({
           top: 0,
           left: 0,
           right: 0,
-          height: 28,
+          height: 20,
           background: brand.moloch500,
         }}
       />
@@ -117,177 +133,220 @@ export const AnimatedScene: React.FC<SceneProps> = ({
       <div
         style={{
           position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 18,
-          background: brand.scroll700,
-        }}
-      />
-
-      <Img
-        src={RAIDGUILD_HERO_URL}
-        style={{
-          position: "absolute",
-          right: -20,
-          top: 80,
-          width: 860,
-          opacity: 0.22,
-          filter: "sepia(0.55) saturate(0.8) hue-rotate(-10deg)",
-        }}
-      />
-
-      <div
-        style={{
-          position: "absolute",
-          inset: "5.5% 4.5%",
-          borderRadius: 28,
+          inset: "5% 4%",
           border: `3px solid ${brand.moloch800}`,
-          boxShadow: `0 26px 80px rgba(41,16,10,${0.16 + pulse * 0.08})`,
+          borderRadius: 28,
+          background: "rgba(249,247,231,0.82)",
+          boxShadow: "0 24px 80px rgba(41,16,10,0.12)",
+          padding: "2.5rem 2.6rem 2.2rem",
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          padding: "2.75rem 3rem",
-          overflow: "hidden",
-          background: "rgba(249,247,231,0.84)",
         }}
       >
-        <div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 24,
-            }}
-          >
-            <Img
-              src={RAIDGUILD_LOGO_URL}
-              style={{
-                width: 340,
-                height: "auto",
-              }}
-            />
-            <div
-              style={{
-                border: `2px solid ${brand.moloch800}`,
-                padding: "0.5rem 0.9rem",
-                fontSize: 20,
-                letterSpacing: "0.18em",
-                textTransform: "uppercase",
-                fontFamily: "'Courier New', monospace",
-                background: "rgba(236,229,172,0.55)",
-              }}
-            >
-              Dispatch {`${Math.round(progress * 100)}%`}
-            </div>
-          </div>
-
-          <h1
-            style={{
-              fontSize: 72,
-              lineHeight: 1.02,
-              margin: "2rem 0 0.8rem",
-              maxWidth: 980,
-              color: brand.moloch800,
-            }}
-          >
-            {title}
-          </h1>
-
-          <p
-            style={{
-              fontSize: 24,
-              maxWidth: 840,
-              lineHeight: 1.35,
-              color: "rgba(41,16,10,0.82)",
-              marginBottom: 18,
-            }}
-          >
-            Mercenary intel for the guild. Daily audio dispatches rendered with
-            Raid Guild branding, hardened infrastructure, and a proper battle rhythm.
-          </p>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 14,
-              flexWrap: "wrap",
-              fontFamily: "'Courier New', monospace",
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-            }}
-          >
-            {["Web3 ops", "Guild dispatch", "Onchain build", "Daily brief"].map((tag) => (
-              <div
-                key={tag}
-                style={{
-                  border: `2px solid ${brand.moloch500}`,
-                  color: brand.moloch500,
-                  background: "rgba(249,247,231,0.9)",
-                  padding: "0.45rem 0.75rem",
-                  fontSize: 16,
-                }}
-              >
-                {tag}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <div
-            style={{
-              border: `3px solid ${brand.moloch800}`,
-              background: `linear-gradient(180deg, rgba(83,74,19,0.92) 0%, rgba(41,16,10,0.98) 100%)`,
-              padding: "1.8rem 2rem 1.6rem",
-              boxShadow: "inset 0 0 0 2px rgba(249,247,231,0.08)",
-            }}
-          >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1.15fr 0.85fr",
+            gap: 28,
+            alignItems: "start",
+          }}
+        >
+          <div>
             <div
               style={{
                 display: "flex",
+                alignItems: "flex-start",
                 justifyContent: "space-between",
-                alignItems: "center",
-                color: brand.scroll100,
-                marginBottom: 18,
+                gap: 20,
               }}
             >
-              <div
+              <Img
+                src={RAIDGUILD_LOGO_URL}
                 style={{
-                  fontSize: 28,
-                  fontWeight: 700,
+                  width: 250,
+                  height: "auto",
                 }}
-              >
-                Warband Waveform
-              </div>
+              />
+
               <div
                 style={{
+                  border: `2px solid ${brand.moloch800}`,
+                  padding: "0.45rem 0.8rem",
                   fontSize: 18,
-                  fontFamily: "'Courier New', monospace",
-                  letterSpacing: "0.08em",
+                  letterSpacing: "0.16em",
                   textTransform: "uppercase",
-                  color: "rgba(249,247,231,0.76)",
+                  fontFamily: "'Courier New', monospace",
+                  background: "rgba(249,247,231,0.95)",
+                  whiteSpace: "nowrap",
                 }}
               >
-                {segments.length} segments
+                Dispatch {`${Math.round(progress * 100)}%`}
               </div>
             </div>
 
+            <div
+              style={{
+                marginTop: 26,
+                fontSize: 17,
+                fontFamily: "'Courier New', monospace",
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: "rgba(41,16,10,0.68)",
+              }}
+            >
+              Daily Brief
+            </div>
+
+            <h1
+              style={{
+                fontSize: secondary ? 68 : 76,
+                lineHeight: 0.98,
+                margin: "0.5rem 0 0",
+                maxWidth: 760,
+              }}
+            >
+              {primary}
+            </h1>
+
+            {secondary ? (
+              <div
+                style={{
+                  marginTop: 12,
+                  fontSize: 34,
+                  lineHeight: 1.1,
+                  color: brand.moloch500,
+                  fontFamily: "'Courier New', monospace",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                }}
+              >
+                {secondary}
+              </div>
+            ) : null}
+
+            <p
+              style={{
+                marginTop: 22,
+                maxWidth: 660,
+                fontSize: 25,
+                lineHeight: 1.3,
+                color: "rgba(41,16,10,0.78)",
+              }}
+            >
+              Mercenary intel for the guild, delivered as a clean daily audio dispatch.
+            </p>
+          </div>
+
+          <div
+            style={{
+              position: "relative",
+              minHeight: 360,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                inset: "2% 8% 6% 10%",
+                borderRadius: "50%",
+                background:
+                  "radial-gradient(circle, rgba(189,72,45,0.16) 0%, rgba(189,72,45,0.08) 45%, transparent 72%)",
+                transform: `scale(${pulse})`,
+              }}
+            />
+            <Img
+              src={RAIDGUILD_HERO_URL}
+              style={{
+                position: "absolute",
+                right: -30,
+                top: -16,
+                width: 500,
+                height: "auto",
+                opacity: 0.72,
+                objectFit: "contain",
+              }}
+            />
+          </div>
+        </div>
+
+        <div
+          style={{
+            marginTop: 20,
+            borderTop: `2px solid rgba(41,16,10,0.16)`,
+            paddingTop: 24,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 18,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 40,
+                lineHeight: 1,
+              }}
+            >
+              Waveform
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                fontFamily: "'Courier New', monospace",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                fontSize: 16,
+                color: "rgba(41,16,10,0.72)",
+              }}
+            >
+              <span>{segments.length} segments</span>
+              {activeSegment ? (
+                <span
+                  style={{
+                    border: `2px solid ${accent}`,
+                    color: accent,
+                    padding: "0.3rem 0.65rem",
+                    background: "rgba(249,247,231,0.95)",
+                  }}
+                >
+                  {activeSegment.speaker}
+                </span>
+              ) : null}
+            </div>
+          </div>
+
+          <div
+            style={{
+              height: 240,
+              border: `3px solid ${brand.moloch800}`,
+              background: `linear-gradient(180deg, rgba(83,74,19,0.94) 0%, rgba(41,16,10,1) 100%)`,
+              padding: "1.6rem 1.4rem 1.1rem",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+            }}
+          >
             <div
               style={{
                 display: "flex",
                 alignItems: "end",
                 gap: 8,
-                height: 180,
-                padding: "0 2px",
+                height: 168,
               }}
             >
               {waveformBars.map((sample, index) => {
-                const barProgress = index / Math.max(1, waveformBars.length - 1);
-                const isPlayed = barProgress <= progress;
-                const isActiveBar = index === activeWaveformIndex;
-                const height = 24 + sample * 116 + (isActiveBar ? pulse * 18 : 0);
+                const isPlayed = index <= activeWaveformIndex;
+                const isCurrent = index === activeWaveformIndex;
+                const height = 22 + sample * 124 + (isCurrent ? 12 : 0);
 
                 return (
                   <div
@@ -296,14 +355,9 @@ export const AnimatedScene: React.FC<SceneProps> = ({
                       width: 16,
                       height,
                       background: isPlayed
-                        ? `linear-gradient(180deg, ${brand.scroll200} 0%, ${accent} 100%)`
-                        : "rgba(249,247,231,0.16)",
-                      border: isPlayed
-                        ? `1px solid rgba(249,247,231,0.45)`
-                        : "1px solid rgba(249,247,231,0.08)",
-                      boxShadow: isPlayed
-                        ? `0 0 ${isActiveBar ? 22 : 10 + pulse * 12}px rgba(189,72,45,0.32)`
-                        : "none",
+                        ? `linear-gradient(180deg, ${brand.scroll100} 0%, ${accent} 100%)`
+                        : "rgba(249,247,231,0.18)",
+                      boxShadow: isCurrent ? `0 0 16px rgba(249,247,231,0.28)` : "none",
                     }}
                   />
                 );
@@ -312,66 +366,19 @@ export const AnimatedScene: React.FC<SceneProps> = ({
 
             <div
               style={{
-                marginTop: 18,
-                height: 10,
-                background: "rgba(249,247,231,0.12)",
-                border: "1px solid rgba(249,247,231,0.2)",
+                height: 8,
+                background: "rgba(249,247,231,0.16)",
+                overflow: "hidden",
               }}
             >
               <div
                 style={{
+                  width: `${Math.round(progress * 100)}%`,
                   height: "100%",
-                  width: `${Math.min(progress * 100, 100)}%`,
                   background: `linear-gradient(90deg, ${brand.scroll200} 0%, ${accent} 100%)`,
                 }}
               />
             </div>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 12,
-              marginTop: 18,
-              flexWrap: "wrap",
-            }}
-          >
-            {visibleSegments.map((segment, index) => {
-              const isActive = segment.index === activeSegmentIndex;
-              return (
-                <div
-                  key={`${segment.speaker}-${index}`}
-                  style={{
-                    minWidth: 220,
-                    padding: "0.85rem 1rem",
-                    background: isActive ? brand.moloch500 : "rgba(41,16,10,0.08)",
-                    color: isActive ? brand.scroll100 : brand.moloch800,
-                    border: `2px solid ${isActive ? brand.moloch500 : "rgba(41,16,10,0.16)"}`,
-                    fontFamily: "'Courier New', monospace",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: 14,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.08em",
-                      opacity: 0.72,
-                      marginBottom: 6,
-                    }}
-                  >
-                    Speaker
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 20,
-                      fontWeight: 700,
-                    }}
-                  >
-                    {segment.speaker}
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
       </div>
