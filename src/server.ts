@@ -1,7 +1,7 @@
 import express from "express";
 import { bundle } from "@remotion/bundler";
 import { getCompositions, renderMedia, selectComposition } from "@remotion/renderer";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { createReadStream, createWriteStream } from "node:fs";
 import { access, copyFile, mkdtemp, mkdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -476,17 +476,16 @@ type ClipManifest = {
   video: string;
   clips: ClipManifestClip[];
   brandId?: string;
+    // Optional S3 key for the source video; if provided, the server
+    // will download the object directly from S3 instead of expecting
+    // an externally reachable HTTP URL.
+    videoKey?: string;
 };
 
 async function resolveVideoUrl(raw: string): Promise<string> {
   const value = raw.trim();
   if (!value) {
     throw new Error("Manifest is missing a non-empty video field.");
-  }
-
-  // Static asset path (served via Remotion's staticFile)
-  if (value.startsWith("/") && !value.startsWith("http://") && !value.startsWith("https://")) {
-    return value;
   }
 
   if (value.startsWith("http://") || value.startsWith("https://")) {
@@ -502,6 +501,116 @@ async function resolveVideoUrl(raw: string): Promise<string> {
   });
 
   return `http://127.0.0.1:${PORT}/render-assets/${assetId}`;
+}
+
+async function localizeVideoSource(options: {
+  video?: string;
+  videoKey?: string;
+}): Promise<{
+  url: string;
+  cleanup: () => Promise<void>;
+}> {
+  const { video, videoKey } = options;
+
+  // 1) Prefer explicit S3 key if provided
+  if (videoKey) {
+    if (!bucketName || !s3Client) {
+      throw new Error("Cannot use videoKey without S3 bucket configuration.");
+    }
+
+    const tmpFile = path.join(tmpdir(), `remotion-video-${randomUUID()}.mp4`);
+
+    console.log("Downloading source video from S3", {
+      bucket: bucketName,
+      key: videoKey,
+      tmpFile,
+    });
+
+    const object = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: bucketName,
+        Key: videoKey,
+      }),
+    );
+
+    if (!object.Body) {
+      throw new Error("S3 GetObject returned an empty body for videoKey.");
+    }
+
+    await pipeline(
+      object.Body as unknown as Readable,
+      createWriteStream(tmpFile),
+    );
+
+    const assetId = randomUUID();
+    localAssetRegistry.set(assetId, {
+      filePath: tmpFile,
+      contentType: "video/mp4",
+    });
+
+    return {
+      url: `http://127.0.0.1:${PORT}/render-assets/${assetId}`,
+      cleanup: async () => {
+        localAssetRegistry.delete(assetId);
+        await rm(tmpFile, { force: true });
+      },
+    };
+  }
+
+  // 2) If we have a HTTP(S) URL, download it once and serve locally
+  if (video && (video.startsWith("http://") || video.startsWith("https://"))) {
+    const tmpFile = path.join(tmpdir(), `remotion-video-${randomUUID()}.mp4`);
+
+    console.log("Downloading source video from URL", {
+      src: video,
+      tmpFile,
+    });
+
+    const response = await fetch(video);
+    if (!response.ok || !response.body) {
+      throw new Error(`Failed to download source video from ${video}: HTTP ${response.status}`);
+    }
+
+    await pipeline(
+      Readable.fromWeb(response.body as unknown as NodeReadableStream),
+      createWriteStream(tmpFile),
+    );
+
+    const assetId = randomUUID();
+    localAssetRegistry.set(assetId, {
+      filePath: tmpFile,
+      contentType: "video/mp4",
+    });
+
+    return {
+      url: `http://127.0.0.1:${PORT}/render-assets/${assetId}`,
+      cleanup: async () => {
+        localAssetRegistry.delete(assetId);
+        await rm(tmpFile, { force: true });
+      },
+    };
+  }
+
+  // 3) Fallback: Local file path (for development)
+  if (video) {
+    const filePath = video.startsWith("file://") ? video.replace(/^file:\/\//, "") : video;
+    console.log("Using local video file", { filePath });
+
+    const assetId = randomUUID();
+    localAssetRegistry.set(assetId, {
+      filePath,
+      contentType: "video/mp4",
+    });
+
+    return {
+      url: `http://127.0.0.1:${PORT}/render-assets/${assetId}`,
+      cleanup: async () => {
+        localAssetRegistry.delete(assetId);
+      },
+    };
+  }
+
+  throw new Error("Either video or videoKey must be provided in the manifest.");
 }
 
 app.get("/healthz", (_req, res) => {
@@ -547,21 +656,27 @@ app.get("/compositions", async (_req, res) => {
 
 app.post("/render-clips", async (req, res) => {
   const body = (req.body ?? {}) as Partial<ClipManifest>;
+  let cleanupVideo: (() => Promise<void>) | null = null;
 
   try {
     if (!body || typeof body !== "object") {
       throw new Error("Body must be a JSON object.");
     }
 
-    if (!body.video || typeof body.video !== "string") {
-      throw new Error("`video` must be a non-empty string.");
-    }
-
     if (!Array.isArray(body.clips) || body.clips.length === 0) {
       throw new Error("`clips` must be a non-empty array.");
     }
 
-    const videoUrl = await resolveVideoUrl(body.video);
+    if (typeof body.video !== "string" && typeof body.videoKey !== "string") {
+      throw new Error("Either `video` (URL or path) or `videoKey` (S3 key) must be provided.");
+    }
+
+    const localizedVideo = await localizeVideoSource({
+      video: typeof body.video === "string" ? body.video : undefined,
+      videoKey: typeof body.videoKey === "string" ? body.videoKey : undefined,
+    });
+    cleanupVideo = localizedVideo.cleanup;
+    const videoUrl = localizedVideo.url;
     const brandId = typeof body.brandId === "string" ? body.brandId : undefined;
 
     const serveUrl = await ensureBundle();
@@ -666,6 +781,14 @@ app.post("/render-clips", async (req, res) => {
       error: "Invalid clip render input",
       detail,
     });
+  } finally {
+    if (cleanupVideo) {
+      try {
+        await cleanupVideo();
+      } catch (error) {
+        console.error("Video cleanup after render-clips failed", error);
+      }
+    }
   }
 });
 
