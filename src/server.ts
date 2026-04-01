@@ -3,7 +3,7 @@ import { bundle } from "@remotion/bundler";
 import { getCompositions, renderMedia, selectComposition } from "@remotion/renderer";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { createReadStream, createWriteStream } from "node:fs";
-import { access, mkdtemp, rm } from "node:fs/promises";
+import { access, copyFile, mkdtemp, mkdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -12,13 +12,14 @@ import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
-import { REMOTION_COMPOSITION_ID } from "./constants.js";
+import { REMOTION_COMPOSITION_ID, REMOTION_SHORT_COMPOSITION_ID } from "./constants.js";
 import { type SceneProps, type SegmentMetadata } from "./segmentTiming.js";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const DEFAULT_PREFIX = "remotion";
 const bucketName =
   process.env.PAPERCLIP_STORAGE_S3_BUCKET ?? process.env.REMOTION_STORAGE_S3_BUCKET;
+const localOutputDir = process.env.REMOTION_LOCAL_OUTPUT_DIR;
 
 const region =
   process.env.PAPERCLIP_STORAGE_S3_REGION ??
@@ -39,17 +40,19 @@ const prefix =
     .replace(/\/+$/, "")
     .trim();
 
-if (!bucketName) {
+if (!bucketName && !localOutputDir) {
   throw new Error(
-    "S3 storage bucket is not configured. Set PAPERCLIP_STORAGE_S3_BUCKET or REMOTION_STORAGE_S3_BUCKET.",
+    "No output configured. Set either PAPERCLIP_STORAGE_S3_BUCKET/REMOTION_STORAGE_S3_BUCKET (for S3) or REMOTION_LOCAL_OUTPUT_DIR (for local development).",
   );
 }
 
-const s3Client = new S3Client({
-  region,
-  endpoint,
-  forcePathStyle,
-});
+const s3Client = bucketName
+  ? new S3Client({
+      region,
+      endpoint,
+      forcePathStyle,
+    })
+  : null;
 const execFileAsync = promisify(execFile);
 const localAssetRegistry = new Map<string, { filePath: string; contentType: string }>();
 const WAVEFORM_BAR_COUNT = 72;
@@ -112,9 +115,32 @@ function composeKey(suggested?: string, compositionId?: string): string {
   return buildObjectKey(ensureMp4(base));
 }
 
-async function uploadToS3(localPath: string, key: string): Promise<void> {
+async function uploadToS3(localPath: string, key: string): Promise<{
+  bucket: string | null;
+  key: string;
+  location: string;
+}> {
+  if (!bucketName) {
+    if (!localOutputDir) {
+      throw new Error(
+        "Local output requested but REMOTION_LOCAL_OUTPUT_DIR is not set. This should not happen.",
+      );
+    }
+
+    const baseDir = localOutputDir.replace(/\/+$/, "");
+    const destination = path.join(baseDir, key);
+    await mkdir(path.dirname(destination), { recursive: true });
+    await copyFile(localPath, destination);
+
+    return {
+      bucket: null,
+      key,
+      location: destination,
+    };
+  }
+
   const stream = createReadStream(localPath);
-  await s3Client.send(
+  await s3Client!.send(
     new PutObjectCommand({
       Bucket: bucketName,
       Key: key,
@@ -122,6 +148,12 @@ async function uploadToS3(localPath: string, key: string): Promise<void> {
       ContentType: "video/mp4",
     }),
   );
+
+  return {
+    bucket: bucketName,
+    key,
+    location: buildObjectKey(key),
+  };
 }
 
 async function cleanupRenderArtifacts(options: {
@@ -428,6 +460,50 @@ function normalizeSegments(input: unknown): SegmentMetadata[] {
   });
 }
 
+type ClipManifestClip = {
+  id: string;
+  start: number; // seconds
+  end: number; // seconds
+  title: string;
+  captions?: {
+    start: number;
+    end: number;
+    text: string;
+  }[];
+};
+
+type ClipManifest = {
+  video: string;
+  clips: ClipManifestClip[];
+  brandId?: string;
+};
+
+async function resolveVideoUrl(raw: string): Promise<string> {
+  const value = raw.trim();
+  if (!value) {
+    throw new Error("Manifest is missing a non-empty video field.");
+  }
+
+  // Static asset path (served via Remotion's staticFile)
+  if (value.startsWith("/") && !value.startsWith("http://") && !value.startsWith("https://")) {
+    return value;
+  }
+
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    return value;
+  }
+
+  const filePath = value.startsWith("file://") ? value.replace(/^file:\/\//, "") : value;
+
+  const assetId = randomUUID();
+  localAssetRegistry.set(assetId, {
+    filePath,
+    contentType: "video/mp4",
+  });
+
+  return `http://127.0.0.1:${PORT}/render-assets/${assetId}`;
+}
+
 app.get("/healthz", (_req, res) => {
   res.sendStatus(200);
 });
@@ -435,9 +511,16 @@ app.get("/healthz", (_req, res) => {
 app.get("/render-assets/:assetId", (req, res) => {
   const asset = localAssetRegistry.get(req.params.assetId);
   if (!asset) {
+    console.warn("render-assets: missing asset", { assetId: req.params.assetId });
     res.sendStatus(404);
     return;
   }
+
+  console.log("render-assets: serving asset", {
+    assetId: req.params.assetId,
+    filePath: asset.filePath,
+    contentType: asset.contentType,
+  });
 
   res.setHeader("Content-Type", asset.contentType);
   createReadStream(asset.filePath).pipe(res);
@@ -459,6 +542,130 @@ app.get("/compositions", async (_req, res) => {
   } catch (error) {
     console.error("Failed to list compositions", error);
     res.status(500).json({ error: "Unable to list compositions" });
+  }
+});
+
+app.post("/render-clips", async (req, res) => {
+  const body = (req.body ?? {}) as Partial<ClipManifest>;
+
+  try {
+    if (!body || typeof body !== "object") {
+      throw new Error("Body must be a JSON object.");
+    }
+
+    if (!body.video || typeof body.video !== "string") {
+      throw new Error("`video` must be a non-empty string.");
+    }
+
+    if (!Array.isArray(body.clips) || body.clips.length === 0) {
+      throw new Error("`clips` must be a non-empty array.");
+    }
+
+    const videoUrl = await resolveVideoUrl(body.video);
+    const brandId = typeof body.brandId === "string" ? body.brandId : undefined;
+
+    const serveUrl = await ensureBundle();
+
+    const results: Array<{
+      id: string;
+      bucket: string | null;
+      key: string;
+      endpoint?: string | undefined;
+      location: string;
+    }> = [];
+
+    for (const clip of body.clips) {
+      if (!clip || typeof clip !== "object") {
+        throw new Error("Every clip must be an object.");
+      }
+
+      const { id, start, end, title } = clip;
+      if (!id || typeof id !== "string") {
+        throw new Error("Each clip must have an `id` string.");
+      }
+      if (typeof start !== "number" || typeof end !== "number" || !Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+        throw new Error(`Clip ${id} must have numeric start/end seconds with end > start.`);
+      }
+      if (!title || typeof title !== "string") {
+        throw new Error(`Clip ${id} must have a non-empty title.`);
+      }
+
+      const captions = Array.isArray(clip.captions)
+        ? clip.captions
+            .filter((cue) =>
+              cue && typeof cue.start === "number" && typeof cue.end === "number" && typeof cue.text === "string",
+            )
+            .map((cue) => ({
+              start: cue.start,
+              end: cue.end,
+              text: cue.text,
+            }))
+        : [];
+
+      const props = {
+        videoUrl,
+        title,
+        clipId: id,
+        brandId,
+        startSeconds: start,
+        endSeconds: end,
+        captions,
+      } satisfies Record<string, unknown>;
+
+      const outputKey = composeKey(`${id}-${Date.now()}`, REMOTION_SHORT_COMPOSITION_ID);
+      const tmpFile = path.join(tmpdir(), `remotion-clip-${id}-${randomUUID()}.mp4`);
+
+      console.log("Short clip render requested", {
+        composition: REMOTION_SHORT_COMPOSITION_ID,
+        clipId: id,
+        title,
+        start,
+        end,
+        outputKey,
+      });
+
+      const videoConfig = await selectComposition({
+        serveUrl,
+        id: REMOTION_SHORT_COMPOSITION_ID,
+        inputProps: props,
+      });
+
+      await renderMedia({
+        serveUrl,
+        composition: videoConfig,
+        outputLocation: tmpFile,
+        inputProps: props,
+        codec: "h264",
+        enforceAudioTrack: true,
+        jpegQuality: 90,
+        logLevel: "error",
+        timeoutInMilliseconds: 120000,
+        concurrency: 1,
+      });
+
+      const upload = await uploadToS3(tmpFile, outputKey);
+      await rm(tmpFile, { force: true });
+
+      results.push({
+        id,
+        bucket: upload.bucket ?? bucketName ?? null,
+        key: upload.key,
+        endpoint,
+        location: upload.location,
+      });
+    }
+
+    res.status(201).json({
+      video: body.video,
+      clips: results,
+    });
+  } catch (error) {
+    const detail = (error as Error)?.message ?? "Unknown clip render error";
+    console.error("render-clips failed", error);
+    res.status(400).json({
+      error: "Invalid clip render input",
+      detail,
+    });
   }
 });
 
@@ -516,6 +723,8 @@ app.post("/render", async (req, res) => {
       enforceAudioTrack: true,
       jpegQuality: 90,
       logLevel: "error",
+      concurrency: 1,
+      timeoutInMilliseconds: 120000,
       onDownload: (src) => {
         console.log("Renderer downloading media", { src });
         return ({ percent, downloaded, totalSize }) => {
@@ -532,19 +741,25 @@ app.post("/render", async (req, res) => {
     });
     console.log("renderMedia complete", { composition, outputLocation: tmpFile });
 
-    await uploadToS3(tmpFile, outputKey);
-    console.log("uploadToS3 complete", { bucket: bucketName, key: outputKey });
+    const upload = await uploadToS3(tmpFile, outputKey);
+    console.log("uploadToS3 complete", {
+      bucket: upload.bucket ?? bucketName,
+      key: upload.key,
+      location: upload.location,
+    });
 
     console.log("Sending render response", {
-      bucket: bucketName,
-      key: outputKey,
+      bucket: upload.bucket ?? bucketName,
+      key: upload.key,
       endpoint,
+      location: upload.location,
     });
 
     res.status(201).json({
-      bucket: bucketName,
-      key: outputKey,
+      bucket: upload.bucket ?? bucketName,
+      key: upload.key,
       endpoint,
+      location: upload.location,
     });
   } catch (error) {
     const detail = (error as Error)?.message ?? "Unknown render error";
