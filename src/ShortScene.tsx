@@ -1,5 +1,5 @@
 import React from "react";
-import {AbsoluteFill, Img, Sequence, Video, interpolate, staticFile, useCurrentFrame, useVideoConfig} from "remotion";
+import {AbsoluteFill, Img, Sequence, OffthreadVideo, interpolate, staticFile, useCurrentFrame, useVideoConfig} from "remotion";
 import {getBrandConfig, type BrandId} from "./brandConfig";
 
 export type CaptionCue = {
@@ -46,18 +46,26 @@ export const ShortScene: React.FC<ShortSceneProps> = ({
   const clipRelativeSeconds = Math.max(0, currentSeconds - TITLE_HOOK_DURATION_SECONDS);
   const activeCaption = captions.find((cue) => clipRelativeSeconds >= cue.start && clipRelativeSeconds < cue.end) ?? null;
 
-  const videoAspect = 16 / 9;
-  const canvasAspect = width / height;
-  let videoWidth: number;
-  let videoHeight: number;
+  const words = activeCaption ? activeCaption.text.split(/\s+/).filter((word) => word.length > 0) : [];
+  const wordTimings = React.useMemo(() => {
+    if (!activeCaption || words.length === 0) return [] as { start: number; end: number }[];
+    const duration = Math.max(0.001, activeCaption.end - activeCaption.start);
+    const slice = duration / words.length;
+    return words.map((_, index) => {
+      const start = activeCaption.start + slice * index;
+      const end = index === words.length - 1 ? activeCaption.end : start + slice;
+      return { start, end };
+    });
+  }, [activeCaption, words.length]);
 
-  if (canvasAspect > 1 / videoAspect) {
-    videoHeight = height;
-    videoWidth = videoHeight * videoAspect;
-  } else {
-    videoWidth = width;
-    videoHeight = videoWidth / videoAspect;
-  }
+  const activeWordIndex = React.useMemo(() => {
+    if (!activeCaption || wordTimings.length === 0) return -1;
+    const t = clipRelativeSeconds;
+    return wordTimings.findIndex((window) => t >= window.start && t < window.end);
+  }, [activeCaption, clipRelativeSeconds, wordTimings]);
+
+  const videoWidth = width * 0.86;
+  const videoHeight = height * 0.7;
 
   const resolvedSrc = videoUrl.startsWith("http://") || videoUrl.startsWith("https://")
     ? videoUrl
@@ -92,59 +100,105 @@ export const ShortScene: React.FC<ShortSceneProps> = ({
             boxShadow: "0 24px 80px rgba(0,0,0,0.35)",
             position: "relative",
             backgroundColor: "black",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "flex-start",
+            padding: 40,
+            gap: 28,
           }}
         >
           <Sequence from={clipStartFrame} durationInFrames={clipEndFrame - clipStartFrame}>
-            <Video
+            <OffthreadVideo
               src={resolvedSrc}
               startFrom={Math.max(0, Math.round(startSeconds * fps))}
               endAt={Math.max(Math.round(startSeconds * fps) + 1, Math.round(endSeconds * fps))}
-              delayRenderTimeoutInMilliseconds={120000}
-              style={{width: "100%", height: "100%", objectFit: "cover"}}
+              style={{
+                width: 0,
+                height: 0,
+                opacity: 0,
+                position: "absolute",
+                left: -9999,
+                top: -9999,
+              }}
             />
           </Sequence>
 
-          {showTitleHook && (
+          <div
+            style={{
+              textAlign: "center",
+              color: "white",
+            }}
+          >
             <div
               style={{
-                position: "absolute",
-                inset: 0,
-                display: "flex",
-                alignItems: "flex-end",
-                justifyContent: "center",
-                padding: 48,
-                background: "linear-gradient(to top, rgba(0,0,0,0.75), rgba(0,0,0,0.1), transparent)",
-                opacity: titleOpacity,
+                fontSize: 54,
+                lineHeight: 1.02,
+                fontWeight: 800,
+                letterSpacing: -0.03,
+                marginBottom: 12,
               }}
             >
-              <div
-                style={{
-                  maxWidth: "88%",
-                  textAlign: "center",
-                  color: "white",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 64,
-                    lineHeight: 1.02,
-                    fontWeight: 800,
-                    letterSpacing: -0.03,
-                  }}
-                >
-                  {title}
-                </div>
-              </div>
+              {title}
             </div>
-          )}
+            <div
+              style={{
+                fontSize: 26,
+                fontWeight: 600,
+                opacity: 0.85,
+              }}
+            >
+              @jamessyoung
+            </div>
+          </div>
 
-          {activeCaption && !showTitleHook && (
+          {brand.assets.heroImageUrl ? (
+            <Img
+              src={brand.assets.heroImageUrl}
+              style={{
+                width: "100%",
+                aspectRatio: "16 / 9",
+                objectFit: "cover",
+                borderRadius: 30,
+              }}
+            />
+          ) : null}
+
+          {/* Brand label inside card at bottom-left */}
+          <div
+            style={{
+              marginTop: "auto",
+              alignSelf: "flex-start",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
+            <div
+              style={{
+                padding: "6px 14px",
+                borderRadius: 999,
+                border: `1px solid rgba(255,255,255,0.5)` ,
+                backgroundColor: "rgba(0,0,0,0.9)",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.7)",
+                fontSize: 22,
+                fontWeight: 600,
+                letterSpacing: 0.08,
+                textTransform: "uppercase",
+                color: "white",
+              }}
+            >
+              {brand.label}
+            </div>
+          </div>
+
+          {activeCaption && !showTitleHook && words.length > 0 && (
             <div
               style={{
                 position: "absolute",
                 left: 24,
                 right: 24,
-                bottom: 36,
+                bottom: 140,
                 display: "flex",
                 justifyContent: "center",
               }}
@@ -152,60 +206,73 @@ export const ShortScene: React.FC<ShortSceneProps> = ({
               <div
                 style={{
                   maxWidth: "90%",
-                  padding: "14px 20px",
-                  borderRadius: 18,
-                  backgroundColor: "rgba(0,0,0,0.76)",
+                  padding: "20px 30px",
+                  borderRadius: 22,
+                  backgroundColor: "rgba(0,0,0,0.80)",
                   color: "white",
-                  fontSize: 40,
-                  lineHeight: 1.1,
+                  fontSize: 72,
+                  lineHeight: 1.12,
                   textAlign: "center",
                   boxShadow: "0 10px 30px rgba(0,0,0,0.55)",
                 }}
               >
-                {activeCaption.text}
+                {words.map((word, index) => {
+                  const isActive = index === activeWordIndex;
+                  return (
+                    <span
+                      key={`${word}-${index}`}
+                      style={{
+                        padding: isActive ? "4px 6px" : undefined,
+                        borderRadius: isActive ? 8 : undefined,
+                        backgroundColor: isActive ? brand.theme.primary : undefined,
+                        color: isActive ? brand.theme.background : undefined,
+                        transition: "background-color 120ms ease-out, color 120ms ease-out",
+                        marginRight: 6,
+                        display: "inline-block",
+                      }}
+                    >
+                      {word}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           )}
         </div>
       </AbsoluteFill>
 
-      <div
-        style={{
-          position: "absolute",
-          left: 24,
-          bottom: 24,
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-        }}
-      >
-        {brand.assets.logoUrl ? (
-          <Img
-            src={brand.assets.logoUrl}
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: "999px",
-              backgroundColor: "rgba(0,0,0,0.7)",
-              padding: 6,
-            }}
-          />
-        ) : null}
-        <div
+      {/* Brand bug logo pinned to bottom-right of the full frame */}
+      {brand.assets.logoUrl ? (
+        <AbsoluteFill
           style={{
-            padding: "4px 10px",
-            borderRadius: 999,
-            border: `1px solid rgba(0,0,0,0.4)`,
-            backgroundColor: "rgba(249,247,231,0.92)",
-            fontSize: 20,
-            fontWeight: 600,
-            letterSpacing: 0.06,
-            textTransform: "uppercase",
+            justifyContent: "flex-end",
+            alignItems: "flex-end",
+            pointerEvents: "none",
+            paddingRight: 80,
+            paddingBottom: 80,
           }}
         >
-          {brand.label}
-        </div>
-      </div>
+          <div
+            style={{
+              width: 260,
+              height: 180,
+              borderRadius: 28,
+              backgroundColor: "rgba(255,255,255,0.95)",
+              padding: 14,
+              boxShadow: "0 10px 30px rgba(0,0,0,0.45)",
+            }}
+          >
+            <Img
+              src={brand.assets.logoUrl}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+              }}
+            />
+          </div>
+        </AbsoluteFill>
+      ) : null}
     </AbsoluteFill>
   );
 };

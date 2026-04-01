@@ -3,7 +3,7 @@ import { bundle } from "@remotion/bundler";
 import { getCompositions, renderMedia, selectComposition } from "@remotion/renderer";
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { createReadStream, createWriteStream } from "node:fs";
-import { access, copyFile, mkdtemp, mkdir, rm } from "node:fs/promises";
+import { access, copyFile, mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -74,6 +74,185 @@ app.use((req, _res, next) => {
   });
   next();
 });
+
+// In-memory job tracking for long-running clip renders started via
+// /render-clips-async. This keeps the external HTTP request short
+// (Railway-friendly) while the actual render work happens in the
+// background by calling the existing synchronous /render-clips
+// endpoint from inside the same process.
+
+type ClipRenderJobStatus = "pending" | "running" | "completed" | "failed";
+
+type ClipRenderJobResult = {
+  video?: string;
+  clips: Array<{
+    id: string;
+    bucket: string | null;
+    key: string;
+    endpoint?: string | undefined;
+    location: string;
+  }>;
+};
+
+type ClipRenderJobRecord = {
+  id: string;
+  status: ClipRenderJobStatus;
+  createdAt: string;
+  updatedAt: string;
+  error?: string;
+  inputSummary: {
+    video?: string;
+    videoKey?: string;
+    clipCount: number;
+  };
+  result?: ClipRenderJobResult;
+};
+
+const clipRenderJobs = new Map<string, ClipRenderJobRecord>();
+
+function createClipRenderJob(body: Partial<ClipManifest>): ClipRenderJobRecord {
+  const id = randomUUID();
+  const now = new Date().toISOString();
+  const clipCount = Array.isArray(body.clips) ? body.clips.length : 0;
+
+  const job: ClipRenderJobRecord = {
+    id,
+    status: "pending",
+    createdAt: now,
+    updatedAt: now,
+    inputSummary: {
+      video: typeof body.video === "string" ? body.video : undefined,
+      videoKey: typeof body.videoKey === "string" ? body.videoKey : undefined,
+      clipCount,
+    },
+  };
+
+  clipRenderJobs.set(id, job);
+  return job;
+}
+
+async function runClipRenderJob(jobId: string, body: Partial<ClipManifest>): Promise<void> {
+  const job = clipRenderJobs.get(jobId);
+  if (!job) return;
+
+  job.status = "running";
+  job.updatedAt = new Date().toISOString();
+  clipRenderJobs.set(jobId, job);
+
+  try {
+    const response = await fetch(`http://127.0.0.1:${PORT}/render-clips`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json",
+      },
+      body: JSON.stringify(body ?? {}),
+    });
+
+    const text = await response.text();
+    if (!response.ok) {
+      job.status = "failed";
+      job.error = `HTTP ${response.status}: ${text}`;
+    } else {
+      const parsed = JSON.parse(text) as ClipRenderJobResult;
+      job.status = "completed";
+      job.result = parsed;
+    }
+  } catch (error) {
+    job.status = "failed";
+    job.error = (error as Error)?.message ?? "Unknown render job error";
+  } finally {
+    job.updatedAt = new Date().toISOString();
+    clipRenderJobs.set(jobId, job);
+  }
+}
+
+  // In-memory job tracking for long-form /render jobs. Mirrors the
+  // clip job model but for a single scene render.
+
+  type RenderJobStatus = "pending" | "running" | "completed" | "failed";
+
+  type RenderJobResult = {
+    bucket: string | null;
+    key: string;
+    endpoint?: string | undefined;
+    location: string;
+  };
+
+  type RenderJobRecord = {
+    id: string;
+    status: RenderJobStatus;
+    createdAt: string;
+    updatedAt: string;
+    error?: string;
+    inputSummary: {
+      composition: string;
+      hasSegments: boolean;
+    };
+    result?: RenderJobResult;
+  };
+
+  const renderJobs = new Map<string, RenderJobRecord>();
+
+  function createRenderJob(body: unknown): RenderJobRecord {
+    const raw = (body ?? {}) as { composition?: unknown; props?: unknown };
+    const composition = String(raw.composition ?? REMOTION_COMPOSITION_ID);
+    const props = (raw.props ?? {}) as Record<string, unknown>;
+    const hasSegments = Array.isArray((props as { segments?: unknown }).segments);
+
+    const id = randomUUID();
+    const now = new Date().toISOString();
+
+    const job: RenderJobRecord = {
+      id,
+      status: "pending",
+      createdAt: now,
+      updatedAt: now,
+      inputSummary: {
+        composition,
+        hasSegments,
+      },
+    };
+
+    renderJobs.set(id, job);
+    return job;
+  }
+
+  async function runRenderJob(jobId: string, body: unknown): Promise<void> {
+    const job = renderJobs.get(jobId);
+    if (!job) return;
+
+    job.status = "running";
+    job.updatedAt = new Date().toISOString();
+    renderJobs.set(jobId, job);
+
+    try {
+      const response = await fetch(`http://127.0.0.1:${PORT}/render`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json",
+        },
+        body: JSON.stringify(body ?? {}),
+      });
+
+      const text = await response.text();
+      if (!response.ok) {
+        job.status = "failed";
+        job.error = `HTTP ${response.status}: ${text}`;
+      } else {
+        const parsed = JSON.parse(text) as RenderJobResult;
+        job.status = "completed";
+        job.result = parsed;
+      }
+    } catch (error) {
+      job.status = "failed";
+      job.error = (error as Error)?.message ?? "Unknown render job error";
+    } finally {
+      job.updatedAt = new Date().toISOString();
+      renderJobs.set(jobId, job);
+    }
+  }
 
 type BundleResult = Awaited<ReturnType<typeof bundle>>;
 
@@ -476,6 +655,11 @@ type ClipManifest = {
   video: string;
   clips: ClipManifestClip[];
   brandId?: string;
+  // Optional local path to a Whisper-style transcript JSON with a `segments` array.
+  // If provided and an individual clip does not define explicit captions, the
+  // server will derive caption cues for that clip by slicing the transcript
+  // between the clip's start/end times.
+  transcriptPath?: string;
     // Optional S3 key for the source video; if provided, the server
     // will download the object directly from S3 instead of expecting
     // an externally reachable HTTP URL.
@@ -654,6 +838,84 @@ app.get("/compositions", async (_req, res) => {
   }
 });
 
+// Asynchronous variant of long-form /render. Returns quickly with a
+// job ID and lets the actual render work happen in the background.
+
+app.post("/render-async", (req, res) => {
+  const body = (req.body ?? {}) as unknown;
+
+  if (!body || typeof body !== "object") {
+    res.status(400).json({ error: "Body must be a JSON object." });
+    return;
+  }
+
+  const job = createRenderJob(body);
+  void runRenderJob(job.id, body);
+
+  res.status(202).json({
+    jobId: job.id,
+    status: job.status,
+    createdAt: job.createdAt,
+    inputSummary: job.inputSummary,
+  });
+});
+
+app.get("/render-async/:jobId", (req, res) => {
+  const job = renderJobs.get(req.params.jobId);
+  if (!job) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+
+  res.json(job);
+});
+
+// Asynchronous variant of /render-clips that returns quickly with a
+// job ID while the actual rendering work happens in the background.
+// Useful for environments like Railway where long-lived HTTP
+// connections are likely to be terminated by the proxy.
+
+app.post("/render-clips-async", (req, res) => {
+  const body = (req.body ?? {}) as Partial<ClipManifest>;
+
+  if (!body || typeof body !== "object") {
+    res.status(400).json({ error: "Body must be a JSON object." });
+    return;
+  }
+
+  if (!Array.isArray(body.clips) || body.clips.length === 0) {
+    res.status(400).json({ error: "`clips` must be a non-empty array." });
+    return;
+  }
+
+  if (typeof body.video !== "string" && typeof body.videoKey !== "string") {
+    res.status(400).json({
+      error: "Either `video` (URL or path) or `videoKey` (S3 key) must be provided.",
+    });
+    return;
+  }
+
+  const job = createClipRenderJob(body);
+  void runClipRenderJob(job.id, body);
+
+  res.status(202).json({
+    jobId: job.id,
+    status: job.status,
+    createdAt: job.createdAt,
+    inputSummary: job.inputSummary,
+  });
+});
+
+app.get("/render-clips-async/:jobId", (req, res) => {
+  const job = clipRenderJobs.get(req.params.jobId);
+  if (!job) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+
+  res.json(job);
+});
+
 app.post("/render-clips", async (req, res) => {
   const body = (req.body ?? {}) as Partial<ClipManifest>;
   let cleanupVideo: (() => Promise<void>) | null = null;
@@ -669,6 +931,47 @@ app.post("/render-clips", async (req, res) => {
 
     if (typeof body.video !== "string" && typeof body.videoKey !== "string") {
       throw new Error("Either `video` (URL or path) or `videoKey` (S3 key) must be provided.");
+    }
+
+    // Optionally load a transcript JSON from disk that contains a `segments`
+    // array with `{ start, end, text }` entries. We'll slice this per-clip to
+    // derive relative caption cues when a clip doesn't specify captions
+    // explicitly.
+    type TranscriptSegment = { start: number; end: number; text: string };
+    let transcriptSegments: TranscriptSegment[] | null = null;
+
+    if (typeof body.transcriptPath === "string" && body.transcriptPath.trim() !== "") {
+      const transcriptPath = body.transcriptPath.trim();
+      try {
+        const raw = await readFile(transcriptPath, { encoding: "utf8" });
+        const parsed = JSON.parse(raw) as { segments?: unknown };
+        if (!Array.isArray(parsed.segments)) {
+          throw new Error("Transcript JSON is missing a segments array.");
+        }
+
+        transcriptSegments = (parsed.segments as unknown[])
+          .map((segment) => {
+            if (typeof segment !== "object" || segment === null) return null;
+            const candidate = segment as { start?: unknown; end?: unknown; text?: unknown };
+            const start = Number(candidate.start);
+            const end = Number(candidate.end);
+            const text = typeof candidate.text === "string" ? candidate.text.trim() : "";
+            if (!Number.isFinite(start) || !Number.isFinite(end) || !text) return null;
+            return { start, end, text } satisfies TranscriptSegment;
+          })
+          .filter((segment): segment is TranscriptSegment => segment !== null);
+
+        console.log("Loaded transcript for render-clips", {
+          transcriptPath,
+          segmentCount: transcriptSegments.length,
+        });
+      } catch (error) {
+        console.error("Failed to load transcriptPath for render-clips", {
+          transcriptPath: body.transcriptPath,
+          error,
+        });
+        throw new Error("Unable to read transcriptPath JSON. See server logs for details.");
+      }
     }
 
     const localizedVideo = await localizeVideoSource({
@@ -705,7 +1008,7 @@ app.post("/render-clips", async (req, res) => {
         throw new Error(`Clip ${id} must have a non-empty title.`);
       }
 
-      const captions = Array.isArray(clip.captions)
+      let captions = Array.isArray(clip.captions)
         ? clip.captions
             .filter((cue) =>
               cue && typeof cue.start === "number" && typeof cue.end === "number" && typeof cue.text === "string",
@@ -716,6 +1019,41 @@ app.post("/render-clips", async (req, res) => {
               text: cue.text,
             }))
         : [];
+
+      // If no explicit captions are provided but we have a transcript
+      // loaded, derive clip-relative caption cues by slicing the global
+      // transcript between the clip's absolute start/end times.
+      if (captions.length === 0 && transcriptSegments && transcriptSegments.length > 0) {
+        const clipDuration = end - start;
+        const MIN_AUTO_CAPTION_DURATION = 0.5; // seconds
+
+        const cues = transcriptSegments
+          .map((segment) => {
+            const segStart = segment.start;
+            const segEnd = segment.end;
+            if (!Number.isFinite(segStart) || !Number.isFinite(segEnd)) return null;
+            if (segEnd <= start || segStart >= end) return null;
+
+            const relativeStart = Math.max(0, segStart - start);
+            const relativeEnd = Math.min(clipDuration, segEnd - start);
+            if (relativeEnd <= relativeStart) return null;
+
+            return {
+              start: Number(relativeStart.toFixed(2)),
+              end: Number(relativeEnd.toFixed(2)),
+              text: segment.text,
+            };
+          })
+          .filter((cue): cue is { start: number; end: number; text: string } => cue !== null);
+
+        const filtered = cues.filter((cue) => cue.end - cue.start >= MIN_AUTO_CAPTION_DURATION);
+        captions = filtered;
+        console.log("Derived captions from transcript for clip", {
+          id,
+          clipDuration,
+          captionCount: captions.length,
+        });
+      }
 
       const props = {
         videoUrl,
@@ -753,13 +1091,21 @@ app.post("/render-clips", async (req, res) => {
         codec: "h264",
         enforceAudioTrack: true,
         jpegQuality: 90,
-        logLevel: "error",
+        logLevel: "verbose",
         timeoutInMilliseconds: 120000,
         concurrency: 1,
+        onBrowserLog: ({ text, type }) => {
+          console.log("ShortClip browser log", { type, text });
+        },
       });
 
       const upload = await uploadToS3(tmpFile, outputKey);
-      await rm(tmpFile, { force: true });
+      console.log("Short clip upload complete", {
+        clipId: id,
+        bucket: upload.bucket ?? bucketName,
+        key: upload.key,
+        location: upload.location,
+      });
 
       results.push({
         id,

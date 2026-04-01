@@ -37,12 +37,37 @@ export const RemotionRoot: React.FC = () => (
       width={1080}
       height={1920}
       defaultProps={{
-        videoUrl: "https://example.com/video.mp4",
+        videoUrl: "/assets/jamesyoung-DTA-avatar-short.mp4",
         title: "Example Clip",
         clipId: "example",
         startSeconds: 0,
-        endSeconds: 4,
-        captions: [],
+        endSeconds: 24.3,
+        captions: [
+          {
+            start: 0.0,
+            end: 0.04,
+            text:
+              "And, uh, what I've seen is that, uh, you know, with most dows, you see huge momentum at the",
+          },
+          {
+            start: 0.04,
+            end: 8.14,
+            text:
+              "beginning, but it's hard and difficult to maintain that alignment. So coordination is necessary",
+          },
+          {
+            start: 8.14,
+            end: 13.98,
+            text:
+              "as a bootstrap event, but it is not sufficient from an alignment perspective.",
+          },
+          {
+            start: 15.0,
+            end: 24.3,
+            text:
+              "Um, from a game mechanism, how do you keep alignment? And so how do you use agents to be able to",
+          },
+        ],
       }}
       calculateMetadata={({ props }) => {
         const p = props as {

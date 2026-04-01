@@ -1,0 +1,67 @@
+{
+  "video": "/home/dekanjbrown/Videos/brownbag/renders/DTA-test/jamesyoung-DTA-avatar.mp4",
+  "brandId": "raidguild",
+  "transcriptPath": "/home/dekanjbrown/Videos/brownbag/renders/DTA-test/jamesyoung-DTA-avatar.json",
+  "clips": [
+    {
+      "id": "coordination-not-sufficient",
+      "start": 537.2,
+      "end": 561.5,
+      "title": "Digital Twin Agents"
+    },
+    {
+      "id": "root-issue-is-trust",
+      "start": 585.0,
+      "end": 622.0,
+      "title": "Digital Twin Agents"
+    },
+    {
+      "id": "agi-from-a-swarm",
+      "start": 664.5,
+      "end": 676.8,
+      "title": "Digital Twin Agents"
+    },
+    {
+      "id": "digital-twin-quiz-game",
+      "start": 884.0,
+      "end": 934.6,
+      "title": "Digital Twin Agents"
+    },
+    {
+      "id": "coherence-score",
+      "start": 935.3,
+      "end": 980.0,
+      "title": "Digital Twin Agents"
+    },
+    {
+      "id": "scale-trust-over-time",
+      "start": 980.0,
+      "end": 1048.0,
+      "title": "Digital Twin Agents"
+    },
+    {
+      "id": "recursive-metagame",
+      "start": 1048.0,
+      "end": 1098.0,
+      "title": "Digital Twin Agents"
+    },
+    {
+      "id": "crypto-rails-trust",
+      "start": 1168.6,
+      "end": 1184.2,
+      "title": "Digital Twin Agents"
+    },
+    {
+      "id": "dao-age-of-ai",
+      "start": 1278.0,
+      "end": 1328.0,
+      "title": "Digital Twin Agents"
+    },
+    {
+      "id": "who-better-to-know-you",
+      "start": 1418.0,
+      "end": 1438.0,
+      "title": "Digital Twin Agents"
+    }
+  ]
+}

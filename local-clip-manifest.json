@@ -1,5 +1,5 @@
 {
-  "video": "/assets/jamesyoung-DTA-avatar-short.mp4",
+  "video": "public/assets/jamesyoung-DTA-avatar-short.mp4",
   "brandId": "raidguild",
   "clips": [
     {
@@ -10,8 +10,8 @@
       "captions": [
         {
           "start": 0.0,
-          "end": 2.0,
-          "text": "Coordination alone isn’t enough to scale."
+          "end": 20.0,
+          "text": "Coordination alone isn’t enough to scale." 
         }
       ]
     },
