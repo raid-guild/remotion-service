@@ -44,6 +44,8 @@ Manifest shape:
 {
   "video": "/absolute/or/relative/path/to/source.mp4" ,
   "brandId": "raidguild",            // optional, passed through to the ShortScene brand config
+  "authorHandle": "@0xjustice",      // optional, shown under the clip title
+  "avatarUrl": "/assets/avatar.png",  // optional, replaces the default hero image when present
   "transcriptPath": "/path/to/transcript.json", // optional, see Captions section
   "clips": [
     {

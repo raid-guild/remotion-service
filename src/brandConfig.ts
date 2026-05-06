@@ -30,7 +30,7 @@ export const DEFAULT_BRAND_ID: BrandId = "raidguild";
 export const BRAND_CONFIG: Record<BrandId, BrandConfigEntry> = {
   raidguild: {
     id: "raidguild",
-    label: "Raid Guild / Dark Factory",
+    label: "Raid Guild / Prism Refactory",
     defaultTitle: "Raid Guild Daily Brief",
     defaultAccent: "#bd482d",
     assets: {

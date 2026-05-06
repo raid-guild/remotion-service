@@ -1,5 +1,5 @@
 import React from "react";
-import {AbsoluteFill, Img, Sequence, OffthreadVideo, interpolate, staticFile, useCurrentFrame, useVideoConfig} from "remotion";
+import {AbsoluteFill, Audio, Img, Sequence, interpolate, staticFile, useCurrentFrame, useVideoConfig} from "remotion";
 import {getBrandConfig, type BrandId} from "./brandConfig";
 
 export type CaptionCue = {
@@ -13,6 +13,8 @@ export type ShortSceneProps = {
   title: string;
   clipId: string;
   brandId?: BrandId;
+  authorHandle?: string;
+  avatarUrl?: string;
   startSeconds: number;
   endSeconds: number;
   captions?: CaptionCue[];
@@ -25,6 +27,8 @@ export const ShortScene: React.FC<ShortSceneProps> = ({
   title,
   clipId,
   brandId,
+  authorHandle = "@0xjustice",
+  avatarUrl,
   startSeconds,
   endSeconds,
   captions = [],
@@ -39,6 +43,12 @@ export const ShortScene: React.FC<ShortSceneProps> = ({
 
   const showTitleHook = currentSeconds <= TITLE_HOOK_DURATION_SECONDS;
   const titleOpacity = interpolate(currentSeconds, [0, TITLE_HOOK_DURATION_SECONDS, TITLE_HOOK_DURATION_SECONDS + 0.3], [1, 1, 0], {extrapolateLeft: "clamp", extrapolateRight: "clamp"});
+  const fadeOpacity = interpolate(
+    currentSeconds,
+    [0, 0.35, Math.max(0.35, totalDurationSeconds - 0.45), totalDurationSeconds],
+    [0, 1, 1, 0],
+    {extrapolateLeft: "clamp", extrapolateRight: "clamp"},
+  );
 
   const clipStartFrame = Math.round(TITLE_HOOK_DURATION_SECONDS * fps);
   const clipEndFrame = clipStartFrame + Math.max(1, Math.round(clipDurationSeconds * fps));
@@ -70,6 +80,12 @@ export const ShortScene: React.FC<ShortSceneProps> = ({
   const resolvedSrc = videoUrl.startsWith("http://") || videoUrl.startsWith("https://")
     ? videoUrl
     : staticFile(videoUrl);
+  const resolvedAvatarSrc = avatarUrl
+    ? avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://")
+      ? avatarUrl
+      : staticFile(avatarUrl)
+    : null;
+  const heroImageSrc = resolvedAvatarSrc ?? brand.assets.heroImageUrl ?? null;
 
   return (
     <AbsoluteFill
@@ -89,6 +105,7 @@ export const ShortScene: React.FC<ShortSceneProps> = ({
         style={{
           justifyContent: "center",
           alignItems: "center",
+          opacity: fadeOpacity,
         }}
       >
         <div
@@ -109,18 +126,10 @@ export const ShortScene: React.FC<ShortSceneProps> = ({
           }}
         >
           <Sequence from={clipStartFrame} durationInFrames={clipEndFrame - clipStartFrame}>
-            <OffthreadVideo
+            <Audio
               src={resolvedSrc}
               startFrom={Math.max(0, Math.round(startSeconds * fps))}
               endAt={Math.max(Math.round(startSeconds * fps) + 1, Math.round(endSeconds * fps))}
-              style={{
-                width: 0,
-                height: 0,
-                opacity: 0,
-                position: "absolute",
-                left: -9999,
-                top: -9999,
-              }}
             />
           </Sequence>
 
@@ -148,13 +157,13 @@ export const ShortScene: React.FC<ShortSceneProps> = ({
                 opacity: 0.85,
               }}
             >
-              @jamessyoung
+              {authorHandle}
             </div>
           </div>
 
-          {brand.assets.heroImageUrl ? (
+          {heroImageSrc ? (
             <Img
-              src={brand.assets.heroImageUrl}
+              src={heroImageSrc}
               style={{
                 width: "100%",
                 aspectRatio: "16 / 9",
@@ -203,19 +212,24 @@ export const ShortScene: React.FC<ShortSceneProps> = ({
                 justifyContent: "center",
               }}
             >
-              <div
-                style={{
-                  maxWidth: "90%",
-                  padding: "20px 30px",
-                  borderRadius: 22,
-                  backgroundColor: "rgba(0,0,0,0.80)",
-                  color: "white",
-                  fontSize: 72,
-                  lineHeight: 1.12,
-                  textAlign: "center",
-                  boxShadow: "0 10px 30px rgba(0,0,0,0.55)",
-                }}
-              >
+                <div
+                  style={{
+                    maxWidth: "90%",
+                    padding: "20px 30px",
+                    borderRadius: 22,
+                    backgroundColor: "rgba(0,0,0,0.80)",
+                    color: "white",
+                    fontSize: 72,
+                    lineHeight: 1.12,
+                    textAlign: "center",
+                    boxShadow: "0 10px 30px rgba(0,0,0,0.55)",
+                    display: "flex",
+                    flexWrap: "wrap",
+                    justifyContent: "center",
+                    columnGap: 20,
+                    rowGap: 4,
+                  }}
+                >
                 {words.map((word, index) => {
                   const isActive = index === activeWordIndex;
                   return (
@@ -227,7 +241,6 @@ export const ShortScene: React.FC<ShortSceneProps> = ({
                         backgroundColor: isActive ? brand.theme.primary : undefined,
                         color: isActive ? brand.theme.background : undefined,
                         transition: "background-color 120ms ease-out, color 120ms ease-out",
-                        marginRight: 6,
                         display: "inline-block",
                       }}
                     >

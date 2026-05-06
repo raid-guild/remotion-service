@@ -644,6 +644,8 @@ type ClipManifestClip = {
   start: number; // seconds
   end: number; // seconds
   title: string;
+  authorHandle?: string;
+  avatarUrl?: string;
   captions?: {
     start: number;
     end: number;
@@ -655,6 +657,8 @@ type ClipManifest = {
   video: string;
   clips: ClipManifestClip[];
   brandId?: string;
+  authorHandle?: string;
+  avatarUrl?: string;
   // Optional local path to a Whisper-style transcript JSON with a `segments` array.
   // If provided and an individual clip does not define explicit captions, the
   // server will derive caption cues for that clip by slicing the transcript
@@ -981,6 +985,8 @@ app.post("/render-clips", async (req, res) => {
     cleanupVideo = localizedVideo.cleanup;
     const videoUrl = localizedVideo.url;
     const brandId = typeof body.brandId === "string" ? body.brandId : undefined;
+    const manifestAuthorHandle = typeof body.authorHandle === "string" ? body.authorHandle : undefined;
+    const manifestAvatarUrl = typeof body.avatarUrl === "string" ? body.avatarUrl : undefined;
 
     const serveUrl = await ensureBundle();
 
@@ -1060,6 +1066,8 @@ app.post("/render-clips", async (req, res) => {
         title,
         clipId: id,
         brandId,
+        authorHandle: typeof clip.authorHandle === "string" ? clip.authorHandle : manifestAuthorHandle,
+        avatarUrl: typeof clip.avatarUrl === "string" ? clip.avatarUrl : manifestAvatarUrl,
         startSeconds: start,
         endSeconds: end,
         captions,
