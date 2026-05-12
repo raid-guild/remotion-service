@@ -66,6 +66,7 @@ const s3Client = bucketName
 const execFileAsync = promisify(execFile);
 const localAssetRegistry = new Map<string, { filePath: string; contentType: string }>();
 const WAVEFORM_BAR_COUNT = 72;
+const AUDIO_DURATION_TAIL_PADDING_MS = 200;
 
 const app = express();
 app.disable("x-powered-by");
@@ -417,6 +418,25 @@ async function probeAudio(filePath: string): Promise<void> {
   if (!stdout.includes("[STREAM]")) {
     throw new Error(`Downloaded asset does not contain an audio stream: ${filePath}`);
   }
+}
+
+async function probeAudioDurationMs(filePath: string): Promise<number> {
+  const { stdout } = await execFileAsync("ffprobe", [
+    "-v",
+    "error",
+    "-show_entries",
+    "format=duration",
+    "-of",
+    "default=noprint_wrappers=1:nokey=1",
+    filePath,
+  ]);
+  const durationSeconds = Number(stdout.trim());
+
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+    throw new Error(`Unable to determine audio duration for downloaded asset: ${filePath}`);
+  }
+
+  return Math.ceil(durationSeconds * 1000);
 }
 
 function allocateWaveformBars(durationsMs: number[], totalBars: number): number[] {
@@ -1263,13 +1283,43 @@ app.post("/render", async (req, res) => {
     const normalizedSegments = normalizeSegments((rawProps as Record<string, unknown>).segments);
     const { localizedSegments, localFilePaths, cleanup } = await localizeSegments(normalizedSegments);
     cleanupLocalizedSegments = cleanup;
+    const measuredDurationsMs = await Promise.all(
+      localFilePaths.map(async (filePath, index) => {
+        try {
+          return await probeAudioDurationMs(filePath);
+        } catch (error) {
+          console.warn("Unable to probe localized segment duration", {
+            index,
+            filePath,
+            error,
+          });
+          return normalizedSegments[index]?.durationMs ?? localizedSegments[index]?.durationMs ?? 0;
+        }
+      }),
+    );
+    const segmentsWithResolvedDurations = localizedSegments.map((segment, index) => {
+      const providedDurationMs = normalizedSegments[index]?.durationMs ?? segment.durationMs;
+      const measuredDurationMs = measuredDurationsMs[index];
+      const resolvedDurationMs = Math.max(
+        segment.durationMs,
+        providedDurationMs,
+        Number.isFinite(measuredDurationMs)
+          ? measuredDurationMs + AUDIO_DURATION_TAIL_PADDING_MS
+          : 0,
+      );
+
+      return {
+        ...segment,
+        durationMs: resolvedDurationMs,
+      };
+    });
     const waveform = await buildWaveform(
       localFilePaths,
-      normalizedSegments.map((segment) => segment.durationMs),
+      segmentsWithResolvedDurations.map((segment) => segment.durationMs),
     );
     const props: SceneProps & Record<string, unknown> = {
       ...rawProps,
-      segments: localizedSegments,
+      segments: segmentsWithResolvedDurations,
       waveform,
     };
     console.log("Render requested", {
@@ -1278,6 +1328,14 @@ app.post("/render", async (req, res) => {
         title: props?.title,
         segments: Array.isArray(props?.segments) ? props.segments.length : undefined,
         waveformBars: props.waveform?.length,
+        requestedDurationMs: normalizedSegments.reduce(
+          (total, segment) => total + segment.durationMs,
+          0,
+        ),
+        resolvedDurationMs: segmentsWithResolvedDurations.reduce(
+          (total, segment) => total + segment.durationMs,
+          0,
+        ),
       },
       outputKey,
     });
