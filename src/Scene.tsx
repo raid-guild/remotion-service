@@ -14,12 +14,15 @@ const RAIDGUILD_LOGO_URL = "https://www.raidguild.org/images/logo-RG-moloch-800.
 const RAIDGUILD_HERO_URL = "https://www.raidguild.org/images/home-image-1-c.webp";
 
 const brand = {
-  moloch500: "#bd482d",
-  moloch800: "#29100a",
-  scroll100: "#f9f7e7",
-  scroll150: "#f3eeca",
-  scroll200: "#ece5ac",
-  scroll700: "#534a13",
+  ember500: "#bd482d",
+  ember650: "#8f2f20",
+  gold400: "#d8a84e",
+  ink950: "#080706",
+  ink900: "#11100e",
+  ink850: "#181411",
+  ash300: "#d4cec1",
+  ash500: "#91887a",
+  parchment: "#f4ead1",
 };
 
 const splitTitle = (title: string): { primary: string; secondary: string | null } => {
@@ -43,7 +46,7 @@ const splitTitle = (title: string): { primary: string; secondary: string | null 
 
 export const AnimatedScene: React.FC<SceneProps> = ({
   title = "Raid Guild Daily Brief",
-  accent = brand.moloch500,
+  accent = brand.gold400,
   segments = [],
   waveform = [],
 }) => {
@@ -85,8 +88,8 @@ export const AnimatedScene: React.FC<SceneProps> = ({
   return (
     <AbsoluteFill
       style={{
-        background: brand.scroll100,
-        color: brand.moloch800,
+        background: brand.ink950,
+        color: brand.parchment,
         fontFamily: "Georgia, 'Times New Roman', serif",
         overflow: "hidden",
       }}
@@ -104,7 +107,7 @@ export const AnimatedScene: React.FC<SceneProps> = ({
       <AbsoluteFill
         style={{
           background:
-            "linear-gradient(135deg, #f9f7e7 0%, #f3eeca 56%, #ece5ac 100%)",
+            "linear-gradient(135deg, #080706 0%, #14100d 45%, #23120d 100%)",
         }}
       />
 
@@ -113,9 +116,18 @@ export const AnimatedScene: React.FC<SceneProps> = ({
           position: "absolute",
           inset: 0,
           backgroundImage:
-            "linear-gradient(rgba(41,16,10,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(41,16,10,0.06) 1px, transparent 1px)",
+            "linear-gradient(rgba(244,234,209,0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(244,234,209,0.045) 1px, transparent 1px)",
           backgroundSize: "48px 48px",
-          opacity: 0.24,
+          opacity: 0.34,
+        }}
+      />
+
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "linear-gradient(180deg, rgba(0,0,0,0.36) 0%, transparent 35%, rgba(0,0,0,0.44) 100%)",
         }}
       />
 
@@ -126,7 +138,7 @@ export const AnimatedScene: React.FC<SceneProps> = ({
           left: 0,
           right: 0,
           height: 20,
-          background: brand.moloch500,
+          background: `linear-gradient(90deg, ${brand.ember650} 0%, ${brand.gold400} 52%, ${brand.ember500} 100%)`,
         }}
       />
 
@@ -134,10 +146,10 @@ export const AnimatedScene: React.FC<SceneProps> = ({
         style={{
           position: "absolute",
           inset: "5% 4%",
-          border: `3px solid ${brand.moloch800}`,
+          border: `2px solid rgba(244,234,209,0.22)`,
           borderRadius: 28,
-          background: "rgba(249,247,231,0.82)",
-          boxShadow: "0 24px 80px rgba(41,16,10,0.12)",
+          background: "rgba(12,10,8,0.84)",
+          boxShadow: "0 24px 90px rgba(0,0,0,0.48), inset 0 0 0 1px rgba(216,168,78,0.14)",
           padding: "2.5rem 2.6rem 2.2rem",
           display: "flex",
           flexDirection: "column",
@@ -166,18 +178,22 @@ export const AnimatedScene: React.FC<SceneProps> = ({
                 style={{
                   width: 250,
                   height: "auto",
+                  filter:
+                    "brightness(0) invert(1) sepia(0.32) saturate(1.8) hue-rotate(350deg) brightness(1.05)",
+                  opacity: 0.94,
                 }}
               />
 
               <div
                 style={{
-                  border: `2px solid ${brand.moloch800}`,
+                  border: `1px solid rgba(216,168,78,0.62)`,
                   padding: "0.45rem 0.8rem",
                   fontSize: 18,
                   letterSpacing: "0.16em",
                   textTransform: "uppercase",
                   fontFamily: "'Courier New', monospace",
-                  background: "rgba(249,247,231,0.95)",
+                  background: "rgba(8,7,6,0.72)",
+                  color: brand.gold400,
                   whiteSpace: "nowrap",
                 }}
               >
@@ -192,7 +208,7 @@ export const AnimatedScene: React.FC<SceneProps> = ({
                 fontFamily: "'Courier New', monospace",
                 letterSpacing: "0.14em",
                 textTransform: "uppercase",
-                color: "rgba(41,16,10,0.68)",
+                color: brand.ash500,
               }}
             >
               Daily Brief
@@ -215,7 +231,7 @@ export const AnimatedScene: React.FC<SceneProps> = ({
                   marginTop: 12,
                   fontSize: 34,
                   lineHeight: 1.1,
-                  color: brand.moloch500,
+                  color: accent,
                   fontFamily: "'Courier New', monospace",
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
@@ -231,7 +247,7 @@ export const AnimatedScene: React.FC<SceneProps> = ({
                 maxWidth: 660,
                 fontSize: 25,
                 lineHeight: 1.3,
-                color: "rgba(41,16,10,0.78)",
+                color: brand.ash300,
               }}
             >
               Mercenary intel for the guild, delivered as a clean daily audio dispatch.
@@ -250,10 +266,9 @@ export const AnimatedScene: React.FC<SceneProps> = ({
             <div
               style={{
                 position: "absolute",
-                inset: "2% 8% 6% 10%",
-                borderRadius: "50%",
-                background:
-                  "radial-gradient(circle, rgba(189,72,45,0.16) 0%, rgba(189,72,45,0.08) 45%, transparent 72%)",
+                inset: "8% 10% 4% 6%",
+                border: `1px solid rgba(216,168,78,0.2)`,
+                background: "rgba(216,168,78,0.045)",
                 transform: `scale(${pulse})`,
               }}
             />
@@ -265,8 +280,9 @@ export const AnimatedScene: React.FC<SceneProps> = ({
                 top: -16,
                 width: 500,
                 height: "auto",
-                opacity: 0.72,
+                opacity: 0.62,
                 objectFit: "contain",
+                filter: "sepia(0.18) saturate(0.9) brightness(0.78) contrast(1.08)",
               }}
             />
           </div>
@@ -275,7 +291,7 @@ export const AnimatedScene: React.FC<SceneProps> = ({
         <div
           style={{
             marginTop: 20,
-            borderTop: `2px solid rgba(41,16,10,0.16)`,
+            borderTop: `1px solid rgba(244,234,209,0.16)`,
             paddingTop: 24,
           }}
         >
@@ -305,17 +321,17 @@ export const AnimatedScene: React.FC<SceneProps> = ({
                 textTransform: "uppercase",
                 letterSpacing: "0.08em",
                 fontSize: 16,
-                color: "rgba(41,16,10,0.72)",
+                color: brand.ash500,
               }}
             >
               <span>{segments.length} segments</span>
               {activeSegment ? (
                 <span
                   style={{
-                    border: `2px solid ${accent}`,
+                    border: `1px solid ${accent}`,
                     color: accent,
                     padding: "0.3rem 0.65rem",
-                    background: "rgba(249,247,231,0.95)",
+                    background: "rgba(8,7,6,0.8)",
                   }}
                 >
                   {activeSegment.speaker}
@@ -327,8 +343,8 @@ export const AnimatedScene: React.FC<SceneProps> = ({
           <div
             style={{
               height: 240,
-              border: `3px solid ${brand.moloch800}`,
-              background: `linear-gradient(180deg, rgba(83,74,19,0.94) 0%, rgba(41,16,10,1) 100%)`,
+              border: `1px solid rgba(244,234,209,0.22)`,
+              background: `linear-gradient(180deg, rgba(24,20,17,0.96) 0%, rgba(8,7,6,1) 100%)`,
               padding: "1.6rem 1.4rem 1.1rem",
               display: "flex",
               flexDirection: "column",
@@ -355,9 +371,9 @@ export const AnimatedScene: React.FC<SceneProps> = ({
                       width: 16,
                       height,
                       background: isPlayed
-                        ? `linear-gradient(180deg, ${brand.scroll100} 0%, ${accent} 100%)`
-                        : "rgba(249,247,231,0.18)",
-                      boxShadow: isCurrent ? `0 0 16px rgba(249,247,231,0.28)` : "none",
+                        ? `linear-gradient(180deg, ${brand.parchment} 0%, ${accent} 54%, ${brand.ember500} 100%)`
+                        : "rgba(244,234,209,0.16)",
+                      boxShadow: isCurrent ? `0 0 18px rgba(216,168,78,0.36)` : "none",
                     }}
                   />
                 );
@@ -367,7 +383,7 @@ export const AnimatedScene: React.FC<SceneProps> = ({
             <div
               style={{
                 height: 8,
-                background: "rgba(249,247,231,0.16)",
+                background: "rgba(244,234,209,0.13)",
                 overflow: "hidden",
               }}
             >
@@ -375,7 +391,7 @@ export const AnimatedScene: React.FC<SceneProps> = ({
                 style={{
                   width: `${Math.round(progress * 100)}%`,
                   height: "100%",
-                  background: `linear-gradient(90deg, ${brand.scroll200} 0%, ${accent} 100%)`,
+                  background: `linear-gradient(90deg, ${brand.ember500} 0%, ${accent} 100%)`,
                 }}
               />
             </div>
