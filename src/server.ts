@@ -28,6 +28,16 @@ const region =
 const endpoint =
   process.env.PAPERCLIP_STORAGE_S3_ENDPOINT ??
   process.env.REMOTION_STORAGE_S3_ENDPOINT;
+const publicOutputBaseUrl = (
+  process.env.PAPERCLIP_STORAGE_PUBLIC_BASE_URL ??
+  process.env.REMOTION_STORAGE_PUBLIC_BASE_URL ??
+  ""
+).replace(/\/+$/, "");
+const servicePublicBaseUrl = (
+  process.env.REMOTION_SERVICE_PUBLIC_URL ??
+  process.env.PUBLIC_URL ??
+  ""
+).replace(/\/+$/, "");
 const forcePathStyle =
   (process.env.PAPERCLIP_STORAGE_S3_FORCE_PATH_STYLE ??
     process.env.REMOTION_STORAGE_S3_FORCE_PATH_STYLE ??
@@ -91,6 +101,8 @@ type ClipRenderJobResult = {
     key: string;
     endpoint?: string | undefined;
     location: string;
+    url?: string | undefined;
+    proxyUrl?: string | undefined;
   }>;
 };
 
@@ -177,6 +189,8 @@ async function runClipRenderJob(jobId: string, body: Partial<ClipManifest>): Pro
     key: string;
     endpoint?: string | undefined;
     location: string;
+    url?: string | undefined;
+    proxyUrl?: string | undefined;
   };
 
   type RenderJobRecord = {
@@ -294,10 +308,30 @@ function composeKey(suggested?: string, compositionId?: string): string {
   return buildObjectKey(ensureMp4(base));
 }
 
+function encodeKeyPath(key: string): string {
+  return key
+    .split("/")
+    .filter((part) => part.length > 0)
+    .map((part) => encodeURIComponent(part))
+    .join("/");
+}
+
+function buildPublicOutputUrl(key: string): string | undefined {
+  if (!publicOutputBaseUrl) return undefined;
+  return `${publicOutputBaseUrl}/${encodeKeyPath(key)}`;
+}
+
+function buildProxyOutputUrl(key: string): string {
+  const proxyPath = `/render-outputs/${encodeKeyPath(key)}`;
+  return servicePublicBaseUrl ? `${servicePublicBaseUrl}${proxyPath}` : proxyPath;
+}
+
 async function uploadToS3(localPath: string, key: string): Promise<{
   bucket: string | null;
   key: string;
   location: string;
+  url?: string | undefined;
+  proxyUrl: string;
 }> {
   if (!bucketName) {
     if (!localOutputDir) {
@@ -315,6 +349,8 @@ async function uploadToS3(localPath: string, key: string): Promise<{
       bucket: null,
       key,
       location: destination,
+      url: undefined,
+      proxyUrl: buildProxyOutputUrl(key),
     };
   }
 
@@ -331,8 +367,16 @@ async function uploadToS3(localPath: string, key: string): Promise<{
   return {
     bucket: bucketName,
     key,
-    location: buildObjectKey(key),
+    location: key,
+    url: buildPublicOutputUrl(key),
+    proxyUrl: buildProxyOutputUrl(key),
   };
+}
+
+function isAllowedOutputKey(key: string): boolean {
+  if (key.includes("..")) return false;
+  if (!prefix) return true;
+  return key === prefix || key.startsWith(`${prefix}/`);
 }
 
 async function cleanupRenderArtifacts(options: {
@@ -823,6 +867,62 @@ app.get("/render-assets/:assetId", (req, res) => {
   createReadStream(asset.filePath).pipe(res);
 });
 
+app.get(/^\/render-outputs\/(.+)$/, async (req, res) => {
+  const rawKey = String(req.params[0] ?? "");
+  const key = rawKey.replace(/^\/+/, "");
+
+  if (!key || !isAllowedOutputKey(key)) {
+    res.sendStatus(404);
+    return;
+  }
+
+  try {
+    if (!bucketName) {
+      if (!localOutputDir) {
+        res.sendStatus(404);
+        return;
+      }
+
+      const baseDir = path.resolve(localOutputDir);
+      const filePath = path.resolve(baseDir, key);
+      if (!filePath.startsWith(`${baseDir}${path.sep}`) && filePath !== baseDir) {
+        res.sendStatus(404);
+        return;
+      }
+
+      res.setHeader("Content-Type", "video/mp4");
+      createReadStream(filePath).on("error", () => res.sendStatus(404)).pipe(res);
+      return;
+    }
+
+    if (!s3Client) {
+      res.sendStatus(404);
+      return;
+    }
+
+    const object = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+      }),
+    );
+
+    res.setHeader("Content-Type", object.ContentType ?? "video/mp4");
+    if (object.ContentLength !== undefined) {
+      res.setHeader("Content-Length", String(object.ContentLength));
+    }
+
+    (object.Body as unknown as Readable).pipe(res);
+  } catch (error) {
+    console.error("render-outputs failed", { key, error });
+    if (!res.headersSent) {
+      res.sendStatus(404);
+    } else {
+      res.end();
+    }
+  }
+});
+
 app.get("/compositions", async (_req, res) => {
   try {
     const serveUrl = await ensureBundle();
@@ -996,6 +1096,8 @@ app.post("/render-clips", async (req, res) => {
       key: string;
       endpoint?: string | undefined;
       location: string;
+      url?: string | undefined;
+      proxyUrl?: string | undefined;
     }> = [];
 
     for (const clip of body.clips) {
@@ -1121,6 +1223,8 @@ app.post("/render-clips", async (req, res) => {
         key: upload.key,
         endpoint,
         location: upload.location,
+        url: upload.url,
+        proxyUrl: upload.proxyUrl,
       });
     }
 
@@ -1223,6 +1327,8 @@ app.post("/render", async (req, res) => {
       bucket: upload.bucket ?? bucketName,
       key: upload.key,
       location: upload.location,
+      url: upload.url,
+      proxyUrl: upload.proxyUrl,
     });
 
     console.log("Sending render response", {
@@ -1230,6 +1336,8 @@ app.post("/render", async (req, res) => {
       key: upload.key,
       endpoint,
       location: upload.location,
+      url: upload.url,
+      proxyUrl: upload.proxyUrl,
     });
 
     res.status(201).json({
@@ -1237,6 +1345,8 @@ app.post("/render", async (req, res) => {
       key: upload.key,
       endpoint,
       location: upload.location,
+      url: upload.url,
+      proxyUrl: upload.proxyUrl,
     });
   } catch (error) {
     const detail = (error as Error)?.message ?? "Unknown render error";

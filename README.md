@@ -214,7 +214,9 @@ Response:
   "bucket": null,             // or S3 bucket name
   "key": "remotion/daily-brief-...mp4",
   "endpoint": "...",         // S3 endpoint when configured
-  "location": "..."           // absolute path (local) or S3 object key
+  "location": "...",          // absolute path (local) or S3 object key
+  "url": "...",               // public/CDN URL when REMOTION_STORAGE_PUBLIC_BASE_URL is set
+  "proxyUrl": "..."           // service proxy URL for private/local outputs
 }
 ```
 
@@ -263,7 +265,9 @@ On success:
     "bucket": null,
     "key": "remotion/daily-brief-...mp4",
     "endpoint": "...",
-    "location": "..."
+    "location": "...",
+    "url": "...",
+    "proxyUrl": "..."
   }
 }
 ```
@@ -274,3 +278,5 @@ If something fails, `status` will be `"failed"` and an `error` string will be pr
 
 - Prefer the async `/render-clips-async` and `/render-async` APIs instead of the synchronous `/render-clips` and `/render` when running on Railway, to avoid proxy timeouts on long renders.
 - Configure your S3 bucket and region via `PAPERCLIP_STORAGE_S3_*` or `REMOTION_STORAGE_S3_*` env vars as needed, or use `REMOTION_LOCAL_OUTPUT_DIR` for local filesystem output.
+- Set `REMOTION_STORAGE_PUBLIC_BASE_URL` or `PAPERCLIP_STORAGE_PUBLIC_BASE_URL` when the bucket/CDN is public; render responses will include `url`.
+- Set `REMOTION_SERVICE_PUBLIC_URL` to the deployed service origin; render responses will include `proxyUrl` values like `/render-outputs/<key>` that stream private S3/local outputs through the service.
