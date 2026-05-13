@@ -298,24 +298,9 @@ async function runClipRenderJob(jobId: string, body: Partial<ClipManifest>): Pro
     renderJobs.set(jobId, job);
 
     try {
-      const response = await fetch(`http://127.0.0.1:${PORT}/render`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          accept: "application/json",
-        },
-        body: JSON.stringify(body ?? {}),
-      });
-
-      const text = await response.text();
-      if (!response.ok) {
-        job.status = "failed";
-        job.error = `HTTP ${response.status}: ${text}`;
-      } else {
-        const parsed = JSON.parse(text) as RenderJobResult;
-        job.status = "completed";
-        job.result = parsed;
-      }
+      const result = await renderScene(body);
+      job.status = "completed";
+      job.result = result;
     } catch (error) {
       job.status = "failed";
       job.error = (error as Error)?.message ?? "Unknown render job error";
@@ -776,6 +761,10 @@ function validateRenderSegments(composition: string, rawProps: Record<string, un
   }
 
   return normalizedSegments;
+}
+
+function isRenderValidationError(detail: string): boolean {
+  return detail.includes("`props.segments`") || detail.includes("Segment at index");
 }
 
 type ClipManifestClip = {
@@ -1373,15 +1362,17 @@ app.post("/render-clips", async (req, res) => {
   }
 });
 
-app.post("/render", async (req, res) => {
-  const composition = getRenderComposition(req.body);
-  const requestedKey = typeof req.body.outputKey === "string" ? req.body.outputKey.trim() : undefined;
+async function renderScene(body: unknown): Promise<RenderJobResult> {
+  const requestBody = getRawProps(body);
+  const composition = getRenderComposition(requestBody);
+  const requestedKey =
+    typeof requestBody.outputKey === "string" ? requestBody.outputKey.trim() : undefined;
   const outputKey = composeKey(requestedKey, composition);
   const tmpFile = path.join(tmpdir(), `remotion-${randomUUID()}.mp4`);
   let cleanupLocalizedSegments: (() => Promise<void>) | null = null;
 
   try {
-    const rawProps = getRawProps(req.body.props);
+    const rawProps = getRawProps(requestBody.props);
     const normalizedSegments = validateRenderSegments(composition, rawProps);
     const { localizedSegments, localFilePaths, cleanup } = await localizeSegments(normalizedSegments);
     cleanupLocalizedSegments = cleanup;
@@ -1491,52 +1482,43 @@ app.post("/render", async (req, res) => {
       proxyUrl: upload.proxyUrl,
     });
 
-    console.log("Sending render response", {
-      bucket: upload.bucket ?? bucketName,
+    const result = {
+      bucket: upload.bucket ?? bucketName ?? null,
       key: upload.key,
       endpoint,
       location: upload.location,
       url: upload.url,
       proxyUrl: upload.proxyUrl,
-    });
+    } satisfies RenderJobResult;
 
-    res.status(201).json({
-      bucket: upload.bucket ?? bucketName,
-      key: upload.key,
-      endpoint,
-      location: upload.location,
-      url: upload.url,
-      proxyUrl: upload.proxyUrl,
-    });
+    console.log("Render result ready", result);
+    return result;
+  } finally {
+    try {
+      await cleanupRenderArtifacts({
+        cleanupLocalizedSegments,
+        tmpFile,
+      });
+      console.log("Render cleanup complete", { outputKey });
+    } catch (error) {
+      console.error("Render cleanup failed", error);
+    }
+  }
+}
+
+app.post("/render", async (req, res) => {
+  try {
+    const result = await renderScene(req.body);
+    console.log("Sending render response", result);
+    res.status(201).json(result);
   } catch (error) {
     const detail = (error as Error)?.message ?? "Unknown render error";
-    const isValidationError =
-      detail.includes("`props.segments`") || detail.includes("Segment at index");
+    const isValidationError = isRenderValidationError(detail);
     console.error("Render failed", error);
     res.status(isValidationError ? 400 : 500).json({
       error: isValidationError ? "Invalid render input" : "Render failed",
       detail,
     });
-  } finally {
-    const cleanupTask = cleanupRenderArtifacts({
-      cleanupLocalizedSegments,
-      tmpFile,
-    }).then(() => {
-      console.log("Render cleanup complete", { outputKey });
-    });
-
-    if (res.headersSent) {
-      void cleanupTask.catch((error) => {
-        console.error("Render cleanup failed after response", error);
-      });
-      return;
-    }
-
-    try {
-      await cleanupTask;
-    } catch (error) {
-      console.error("Render cleanup failed before response", error);
-    }
   }
 });
 
