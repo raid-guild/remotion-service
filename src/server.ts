@@ -136,7 +136,10 @@ const compositionSchemas = {
         brand: {
           name: "Prism Refactory",
           logoUrl: "optional http(s) URL or local asset path",
-          backgroundImageUrl: "optional http(s) URL or local asset path",
+          backgroundImageUrl: "optional legacy intro background image",
+          introBackgroundImageUrl: "optional intro background image",
+          sectionBackgroundImageUrl: "optional default slide background image",
+          outroBackgroundImageUrl: "optional outro background image",
           accent: "#99e500",
           secondaryAccent: "#7c86ff",
           background: "#00011d",

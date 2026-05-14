@@ -18,6 +18,9 @@ export type LaunchDemoBrand = {
   name?: string;
   logoUrl?: string;
   backgroundImageUrl?: string;
+  introBackgroundImageUrl?: string;
+  sectionBackgroundImageUrl?: string;
+  outroBackgroundImageUrl?: string;
   accent?: string;
   secondaryAccent?: string;
   background?: string;
@@ -97,6 +100,29 @@ const clampProgress = (frame: number, from: number, duration: number): number =>
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
+};
+
+const BackgroundImageLayer: React.FC<{
+  src: string | null;
+  opacity?: number;
+}> = ({ src, opacity = 0.28 }) => {
+  if (!src) return null;
+
+  return (
+    <AbsoluteFill>
+      <Img
+        src={src}
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          opacity,
+          mixBlendMode: "screen",
+          filter: "saturate(1.08) contrast(1.08)",
+        }}
+      />
+    </AbsoluteFill>
+  );
 };
 
 const splitLines = (value: string, maxWords = 4): string[] => {
@@ -250,7 +276,15 @@ const MediaPanel: React.FC<{
           ))}
         </div>
 
-        <div style={{ position: "absolute", inset: "44px 0 0" }}>
+        <div
+          style={{
+            position: "absolute",
+            inset: "44px 0 0",
+            padding: 24,
+            background:
+              "radial-gradient(circle at center, rgba(124,134,255,0.14) 0%, rgba(0,1,29,0.18) 42%, rgba(0,1,29,0.72) 100%)",
+          }}
+        >
           {mediaSrc ? (
             mediaType === "video" ? (
               <Video
@@ -264,7 +298,7 @@ const MediaPanel: React.FC<{
                 style={{
                   width: "100%",
                   height: "100%",
-                  objectFit: "cover",
+                  objectFit: "contain",
                   filter: "saturate(1.08) contrast(1.02)",
                 }}
                 muted
@@ -275,7 +309,7 @@ const MediaPanel: React.FC<{
                 style={{
                   width: "100%",
                   height: "100%",
-                  objectFit: "cover",
+                  objectFit: "contain",
                   filter: "saturate(1.08) contrast(1.02)",
                 }}
               />
@@ -396,7 +430,11 @@ export const LaunchDemoScene: React.FC<LaunchDemoProps> = ({
   const mutedText = brand?.mutedText ?? DEFAULT_MUTED_TEXT;
   const brandName = brand?.name ?? "Prism Refactory";
   const logoUrl = resolveAsset(brand?.logoUrl ?? DEFAULT_LOGO);
-  const brandBackgroundUrl = resolveAsset(brand?.backgroundImageUrl);
+  const introBackgroundUrl = resolveAsset(
+    brand?.introBackgroundImageUrl ?? brand?.backgroundImageUrl,
+  );
+  const sectionBackgroundUrl = resolveAsset(brand?.sectionBackgroundImageUrl);
+  const outroBackgroundUrl = resolveAsset(brand?.outroBackgroundImageUrl);
   const resolvedAudioUrl = resolveAsset(audioUrl);
   const resolvedIntro = {
     headline: intro?.headline ?? brandName,
@@ -466,21 +504,6 @@ export const LaunchDemoScene: React.FC<LaunchDemoProps> = ({
             `radial-gradient(circle at 72% 30%, ${accent}22 0%, transparent 28%), radial-gradient(circle at 24% 70%, ${secondaryAccent}22 0%, transparent 30%), linear-gradient(135deg, ${background} 0%, #050618 48%, #111826 100%)`,
         }}
       />
-      {brandBackgroundUrl ? (
-        <AbsoluteFill>
-          <Img
-            src={brandBackgroundUrl}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              opacity: 0.28,
-              mixBlendMode: "screen",
-              filter: "saturate(1.08) contrast(1.08)",
-            }}
-          />
-        </AbsoluteFill>
-      ) : null}
       <div
         style={{
           position: "absolute",
@@ -511,6 +534,7 @@ export const LaunchDemoScene: React.FC<LaunchDemoProps> = ({
       </div>
 
       <Sequence from={0} durationInFrames={introFrames}>
+        <BackgroundImageLayer src={introBackgroundUrl} opacity={0.34} />
         <AbsoluteFill
           style={{
             alignItems: "center",
@@ -583,21 +607,10 @@ export const LaunchDemoScene: React.FC<LaunchDemoProps> = ({
           from={section.from}
           durationInFrames={section.frames}
         >
-          {section.backgroundImageUrl ? (
-            <AbsoluteFill>
-              <Img
-                src={resolveAsset(section.backgroundImageUrl) ?? ""}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  opacity: 0.22,
-                  mixBlendMode: "screen",
-                  filter: "saturate(1.05) contrast(1.06)",
-                }}
-              />
-            </AbsoluteFill>
-          ) : null}
+          <BackgroundImageLayer
+            src={resolveAsset(section.backgroundImageUrl) ?? sectionBackgroundUrl}
+            opacity={0.2}
+          />
           <AbsoluteFill
             style={{
               padding: "104px 92px 94px",
@@ -719,6 +732,7 @@ export const LaunchDemoScene: React.FC<LaunchDemoProps> = ({
       ))}
 
       <Sequence from={outroFrom} durationInFrames={outroFrames}>
+        <BackgroundImageLayer src={outroBackgroundUrl} opacity={0.36} />
         <AbsoluteFill
           style={{
             justifyContent: "center",
