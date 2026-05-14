@@ -17,9 +17,12 @@ export type LaunchDemoMediaType = "image" | "video";
 export type LaunchDemoBrand = {
   name?: string;
   logoUrl?: string;
+  backgroundImageUrl?: string;
   accent?: string;
+  secondaryAccent?: string;
   background?: string;
   text?: string;
+  mutedText?: string;
 };
 
 export type LaunchDemoIntro = {
@@ -35,6 +38,7 @@ export type LaunchDemoSection = {
   bullets?: string[];
   consoleLabel?: string;
   consoleText?: string;
+  backgroundImageUrl?: string;
   mediaUrl?: string;
   mediaType?: LaunchDemoMediaType;
   startSeconds?: number;
@@ -58,9 +62,11 @@ export type LaunchDemoProps = {
   outro?: LaunchDemoOutro;
 };
 
-const DEFAULT_ACCENT = "#d8a84e";
-const DEFAULT_BACKGROUND = "#080706";
-const DEFAULT_TEXT = "#f4ead1";
+const DEFAULT_ACCENT = "#99e500";
+const DEFAULT_SECONDARY_ACCENT = "#7c86ff";
+const DEFAULT_BACKGROUND = "#00011d";
+const DEFAULT_TEXT = "#e6ebf6";
+const DEFAULT_MUTED_TEXT = "#bdd6cd";
 const DEFAULT_LOGO = "https://www.raidguild.org/images/logo-RG-moloch-800.svg";
 const DEFAULT_INTRO_MS = 4500;
 const DEFAULT_SECTION_MS = 9000;
@@ -164,9 +170,10 @@ const LaunchLogo: React.FC<{
 const MediaPanel: React.FC<{
   section: LaunchDemoSection;
   accent: string;
+  secondaryAccent: string;
   localFrame: number;
   sectionFrames: number;
-}> = ({ section, accent, localFrame, sectionFrames }) => {
+}> = ({ section, accent, secondaryAccent, localFrame, sectionFrames }) => {
   const { fps } = useVideoConfig();
   const mediaSrc = resolveAsset(section.mediaUrl);
   const mediaType = section.mediaType ?? (mediaSrc?.match(/\.(mp4|webm|mov)(\?|$)/i) ? "video" : "image");
@@ -237,7 +244,7 @@ const MediaPanel: React.FC<{
                 width: 12,
                 height: 12,
                 borderRadius: "50%",
-                background: index === 0 ? accent : "rgba(244,234,209,0.28)",
+                background: index === 0 ? accent : index === 1 ? secondaryAccent : "rgba(230,235,246,0.28)",
               }}
             />
           ))}
@@ -258,6 +265,7 @@ const MediaPanel: React.FC<{
                   width: "100%",
                   height: "100%",
                   objectFit: "cover",
+                  filter: "saturate(1.08) contrast(1.02)",
                 }}
                 muted
               />
@@ -268,6 +276,7 @@ const MediaPanel: React.FC<{
                   width: "100%",
                   height: "100%",
                   objectFit: "cover",
+                  filter: "saturate(1.08) contrast(1.02)",
                 }}
               />
             )
@@ -279,7 +288,7 @@ const MediaPanel: React.FC<{
                 display: "grid",
                 placeItems: "center",
                 background:
-                  "linear-gradient(135deg, rgba(216,168,78,0.12) 0%, rgba(189,72,45,0.18) 48%, rgba(244,234,209,0.06) 100%)",
+                  `linear-gradient(135deg, ${secondaryAccent}22 0%, ${accent}20 48%, rgba(230,235,246,0.06) 100%)`,
               }}
             >
               <div
@@ -324,7 +333,7 @@ const MediaPanel: React.FC<{
               right: 34,
               bottom: 34,
               padding: "18px 22px",
-              border: `1px solid rgba(216,168,78,0.42)`,
+              border: `1px solid ${accent}66`,
               background: "rgba(5,4,3,0.86)",
               boxShadow: "0 18px 50px rgba(0,0,0,0.44)",
               fontFamily: "'Courier New', monospace",
@@ -344,7 +353,7 @@ const MediaPanel: React.FC<{
             </div>
             <div
               style={{
-                color: "rgba(244,234,209,0.92)",
+                color: "rgba(230,235,246,0.92)",
                 fontSize: 22,
                 lineHeight: 1.3,
                 minHeight: 58,
@@ -381,10 +390,13 @@ export const LaunchDemoScene: React.FC<LaunchDemoProps> = ({
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
   const accent = brand?.accent ?? DEFAULT_ACCENT;
+  const secondaryAccent = brand?.secondaryAccent ?? DEFAULT_SECONDARY_ACCENT;
   const background = brand?.background ?? DEFAULT_BACKGROUND;
   const text = brand?.text ?? DEFAULT_TEXT;
+  const mutedText = brand?.mutedText ?? DEFAULT_MUTED_TEXT;
   const brandName = brand?.name ?? "Prism Refactory";
   const logoUrl = resolveAsset(brand?.logoUrl ?? DEFAULT_LOGO);
+  const brandBackgroundUrl = resolveAsset(brand?.backgroundImageUrl);
   const resolvedAudioUrl = resolveAsset(audioUrl);
   const resolvedIntro = {
     headline: intro?.headline ?? brandName,
@@ -451,15 +463,30 @@ export const LaunchDemoScene: React.FC<LaunchDemoProps> = ({
       <AbsoluteFill
         style={{
           background:
-            `radial-gradient(circle at 72% 30%, ${accent}24 0%, transparent 28%), linear-gradient(135deg, ${background} 0%, #120d0a 48%, #1b0d09 100%)`,
+            `radial-gradient(circle at 72% 30%, ${accent}22 0%, transparent 28%), radial-gradient(circle at 24% 70%, ${secondaryAccent}22 0%, transparent 30%), linear-gradient(135deg, ${background} 0%, #050618 48%, #111826 100%)`,
         }}
       />
+      {brandBackgroundUrl ? (
+        <AbsoluteFill>
+          <Img
+            src={brandBackgroundUrl}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              opacity: 0.28,
+              mixBlendMode: "screen",
+              filter: "saturate(1.08) contrast(1.08)",
+            }}
+          />
+        </AbsoluteFill>
+      ) : null}
       <div
         style={{
           position: "absolute",
           inset: 0,
           backgroundImage:
-            "linear-gradient(rgba(244,234,209,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(244,234,209,0.04) 1px, transparent 1px)",
+            "linear-gradient(rgba(230,235,246,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(230,235,246,0.035) 1px, transparent 1px)",
           backgroundSize: "54px 54px",
           opacity: 0.35,
         }}
@@ -471,14 +498,14 @@ export const LaunchDemoScene: React.FC<LaunchDemoProps> = ({
           right: 72,
           bottom: 46,
           height: 3,
-          background: "rgba(244,234,209,0.15)",
+          background: "rgba(230,235,246,0.15)",
         }}
       >
         <div
           style={{
             height: "100%",
             width: `${Math.round(globalProgress * 100)}%`,
-            background: `linear-gradient(90deg, #bd482d 0%, ${accent} 100%)`,
+            background: `linear-gradient(90deg, ${secondaryAccent} 0%, ${accent} 100%)`,
           }}
         />
       </div>
@@ -539,7 +566,7 @@ export const LaunchDemoScene: React.FC<LaunchDemoProps> = ({
               style={{
                 marginTop: 18,
                 fontSize: 28,
-                color: "rgba(244,234,209,0.72)",
+                color: mutedText,
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
               }}
@@ -556,6 +583,21 @@ export const LaunchDemoScene: React.FC<LaunchDemoProps> = ({
           from={section.from}
           durationInFrames={section.frames}
         >
+          {section.backgroundImageUrl ? (
+            <AbsoluteFill>
+              <Img
+                src={resolveAsset(section.backgroundImageUrl) ?? ""}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  opacity: 0.22,
+                  mixBlendMode: "screen",
+                  filter: "saturate(1.05) contrast(1.06)",
+                }}
+              />
+            </AbsoluteFill>
+          ) : null}
           <AbsoluteFill
             style={{
               padding: "104px 92px 94px",
@@ -615,7 +657,7 @@ export const LaunchDemoScene: React.FC<LaunchDemoProps> = ({
                     maxWidth: 720,
                     fontSize: 28,
                     lineHeight: 1.28,
-                    color: "rgba(244,234,209,0.76)",
+                    color: mutedText,
                   }}
                 >
                   {section.body}
@@ -644,7 +686,7 @@ export const LaunchDemoScene: React.FC<LaunchDemoProps> = ({
                           alignItems: "center",
                           gap: 16,
                           fontSize: 24,
-                          color: "rgba(244,234,209,0.88)",
+                          color: "rgba(230,235,246,0.88)",
                           transform: `translateY(${(1 - reveal) * 24}px)`,
                           opacity: reveal,
                         }}
@@ -668,6 +710,7 @@ export const LaunchDemoScene: React.FC<LaunchDemoProps> = ({
             <MediaPanel
               section={section}
               accent={accent}
+              secondaryAccent={secondaryAccent}
               localFrame={frame - section.from}
               sectionFrames={section.frames}
             />
@@ -717,7 +760,7 @@ export const LaunchDemoScene: React.FC<LaunchDemoProps> = ({
               marginTop: 24,
               fontSize: 30,
               lineHeight: 1.25,
-              color: "rgba(244,234,209,0.72)",
+              color: mutedText,
               maxWidth: 760,
             }}
           >
