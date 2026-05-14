@@ -1,8 +1,13 @@
 import React from "react";
 import { Composition } from "remotion";
+import { LaunchDemoScene, getLaunchDemoDurationMs, type LaunchDemoProps } from "./LaunchDemoScene";
 import { AnimatedScene } from "./Scene";
 import { ShortScene } from "./ShortScene";
-import { REMOTION_COMPOSITION_ID, REMOTION_SHORT_COMPOSITION_ID } from "./constants";
+import {
+  REMOTION_COMPOSITION_ID,
+  REMOTION_LAUNCH_DEMO_COMPOSITION_ID,
+  REMOTION_SHORT_COMPOSITION_ID,
+} from "./constants";
 import {
   DEFAULT_FPS,
   getDurationFromSegments,
@@ -83,6 +88,54 @@ export const RemotionRoot: React.FC = () => (
           durationInFrames: frames,
         };
       }}
+    />
+
+    <Composition
+      id={REMOTION_LAUNCH_DEMO_COMPOSITION_ID}
+      component={LaunchDemoScene}
+      durationInFrames={DEFAULT_FPS * 24}
+      fps={DEFAULT_FPS}
+      width={1920}
+      height={1080}
+      defaultProps={{
+        brand: {
+          name: "Prism Refactory",
+          accent: "#d8a84e",
+          background: "#080706",
+          text: "#f4ead1",
+        },
+        intro: {
+          headline: "Prism Refactory",
+          subhead: "Launch-ready media for agent-native workflows",
+        },
+        sections: [
+          {
+            eyebrow: "Workflow",
+            headline: "Briefs, demos, and shorts from one render flow",
+            body:
+              "Bring narration, screenshots, screen recordings, and publishable metadata into a single Remotion scene.",
+            bullets: ["Async rendering", "Public proxy URLs", "Schema discovery"],
+          },
+          {
+            eyebrow: "Demo",
+            headline: "Reveal the product while the story moves",
+            body:
+              "Text animates on the left while screenshots or clips transition on the right.",
+            bullets: ["Split-screen layout", "Media wipes", "Branded motion"],
+          },
+        ],
+        outro: {
+          headline: "Launch the workflow",
+          body: "Briefs, demos, shorts, and public media from the same pipeline.",
+          cta: "Build with Dark Factory",
+        },
+      }}
+      calculateMetadata={({ props }) => ({
+        durationInFrames: Math.max(
+          DEFAULT_FPS * 6,
+          Math.round((getLaunchDemoDurationMs(props as LaunchDemoProps) / 1000) * DEFAULT_FPS),
+        ),
+      })}
     />
   </>
 );

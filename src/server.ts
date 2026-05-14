@@ -12,7 +12,11 @@ import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
-import { REMOTION_COMPOSITION_ID, REMOTION_SHORT_COMPOSITION_ID } from "./constants.js";
+import {
+  REMOTION_COMPOSITION_ID,
+  REMOTION_LAUNCH_DEMO_COMPOSITION_ID,
+  REMOTION_SHORT_COMPOSITION_ID,
+} from "./constants.js";
 import { type SceneProps, type SegmentMetadata } from "./segmentTiming.js";
 
 const PORT = Number(process.env.PORT ?? 3000);
@@ -121,6 +125,55 @@ const compositionSchemas = {
       ],
     },
     required: ["video or videoKey", "clips[0].id", "clips[0].title", "clips[0].start", "clips[0].end"],
+  },
+  [REMOTION_LAUNCH_DEMO_COMPOSITION_ID]: {
+    composition: REMOTION_LAUNCH_DEMO_COMPOSITION_ID,
+    endpoint: "/render or /render-async",
+    requestShape: {
+      composition: REMOTION_LAUNCH_DEMO_COMPOSITION_ID,
+      outputKey: "launch-demo/example.mp4",
+      props: {
+        brand: {
+          name: "Prism Refactory",
+          logoUrl: "optional http(s) URL or local asset path",
+          accent: "#d8a84e",
+          background: "#080706",
+          text: "#f4ead1",
+        },
+        audioUrl: "optional http(s) narration URL or local asset path",
+        durationMs: "optional total duration override",
+        intro: {
+          headline: "Prism Refactory",
+          subhead: "Launch-ready media for agent-native workflows",
+          durationMs: 4500,
+        },
+        sections: [
+          {
+            eyebrow: "Workflow",
+            headline: "Reveal text on the left",
+            body: "Media transitions on the right.",
+            bullets: ["Screenshot panels", "Video clips", "Branded motion"],
+            mediaUrl: "optional http(s) URL or local asset path",
+            mediaType: "image or video",
+            startSeconds: "optional video trim start",
+            endSeconds: "optional video trim end",
+            durationMs: 9000,
+          },
+        ],
+        outro: {
+          headline: "Launch the workflow",
+          body: "Briefs, demos, shorts, and public media from the same pipeline.",
+          cta: "Build with Dark Factory",
+          durationMs: 5000,
+        },
+      },
+    },
+    required: ["props.sections[0].headline"],
+    notes: [
+      "Intro and outro have defaults.",
+      "If `sections` is omitted, the composition renders with placeholder demo sections.",
+      "Use `mediaType: video` for screen recordings and `mediaType: image` for screenshots.",
+    ],
   },
 } as const;
 
@@ -764,7 +817,52 @@ function validateRenderSegments(composition: string, rawProps: Record<string, un
 }
 
 function isRenderValidationError(detail: string): boolean {
-  return detail.includes("`props.segments`") || detail.includes("Segment at index");
+  return (
+    detail.includes("`props.segments`") ||
+    detail.includes("Segment at index") ||
+    detail.includes("LaunchDemoScene")
+  );
+}
+
+function validateLaunchDemoProps(composition: string, rawProps: Record<string, unknown>): void {
+  if (composition !== REMOTION_LAUNCH_DEMO_COMPOSITION_ID) return;
+
+  if (rawProps.sections === undefined) return;
+  if (!Array.isArray(rawProps.sections)) {
+    throw new Error("`props.sections` must be an array for LaunchDemoScene.");
+  }
+
+  rawProps.sections.forEach((section, index) => {
+    if (typeof section !== "object" || section === null) {
+      throw new Error(`LaunchDemoScene section at index ${index} must be an object.`);
+    }
+
+    const candidate = section as Record<string, unknown>;
+    if (typeof candidate.headline !== "string" || candidate.headline.trim().length === 0) {
+      throw new Error(
+        `LaunchDemoScene section at index ${index} must include a non-empty \`headline\`.`,
+      );
+    }
+
+    if (
+      candidate.mediaType !== undefined &&
+      candidate.mediaType !== "image" &&
+      candidate.mediaType !== "video"
+    ) {
+      throw new Error(
+        `LaunchDemoScene section at index ${index} must use \`mediaType\` "image" or "video".`,
+      );
+    }
+
+    if (
+      candidate.durationMs !== undefined &&
+      (!Number.isFinite(Number(candidate.durationMs)) || Number(candidate.durationMs) <= 0)
+    ) {
+      throw new Error(
+        `LaunchDemoScene section at index ${index} must use a positive \`durationMs\`.`,
+      );
+    }
+  });
 }
 
 type ClipManifestClip = {
@@ -1057,6 +1155,7 @@ app.post("/render-async", (req, res) => {
     const composition = getRenderComposition(body);
     const rawProps = getRawProps((body as Record<string, unknown>).props);
     validateRenderSegments(composition, rawProps);
+    validateLaunchDemoProps(composition, rawProps);
   } catch (error) {
     res.status(400).json({
       error: "Invalid render input",
@@ -1374,6 +1473,7 @@ async function renderScene(body: unknown): Promise<RenderJobResult> {
   try {
     const rawProps = getRawProps(requestBody.props);
     const normalizedSegments = validateRenderSegments(composition, rawProps);
+    validateLaunchDemoProps(composition, rawProps);
     const { localizedSegments, localFilePaths, cleanup } = await localizeSegments(normalizedSegments);
     cleanupLocalizedSegments = cleanup;
     const measuredDurationsMs = await Promise.all(
