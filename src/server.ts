@@ -129,6 +129,49 @@ const compositionSchemas = {
   [REMOTION_LAUNCH_DEMO_COMPOSITION_ID]: {
     composition: REMOTION_LAUNCH_DEMO_COMPOSITION_ID,
     endpoint: "/render or /render-async",
+    mediaRequirements: {
+      frame: {
+        width: 1920,
+        height: 1080,
+        aspectRatio: "16:9",
+      },
+      mainMediaPanel: {
+        usage: "Right-side screenshot or screen recording inside a browser-style frame.",
+        fitMode: "cover",
+        recommendedAspectRatio: "approximately 1.15:1 to 1.25:1 for the current split layout",
+        recommendedSizes: ["1440x1200", "1500x1250", "1600x1350", "1800x1500"],
+        acceptableSizes: ["1434x989 works but crops vertically/horizontally depending on content", "16:9 works but crops more in this layout"],
+        captureGuidance: [
+          "Capture the app with important UI centered.",
+          "Keep key buttons, nav, and labels away from the outer 8-10% edges.",
+          "For screen recordings, use a taller browser window if possible rather than a standard 16:9 capture.",
+          "If edge-to-edge fill is desired, crop screenshots to roughly 6:5 or 5:4 before rendering.",
+        ],
+      },
+      backgroundImages: {
+        introBackgroundImageUrl: {
+          usage: "Intro only, behind centered logo/title.",
+          recommendedAspectRatio: "16:9 or wider",
+          recommendedSizes: ["1920x1080", "2560x1440", "3840x2160"],
+        },
+        sectionBackgroundImageUrl: {
+          usage: "Default background for slide/demo sections behind text and media.",
+          recommendedAspectRatio: "16:9 or wider",
+          recommendedSizes: ["1920x1080", "2560x1440", "3840x2160"],
+        },
+        outroBackgroundImageUrl: {
+          usage: "Outro only, behind CTA.",
+          recommendedAspectRatio: "16:9 or wider",
+          recommendedSizes: ["1920x1080", "2560x1440", "3840x2160"],
+        },
+        note: "Backgrounds render as low-opacity screen-blended layers and should be atmospheric, not text-heavy.",
+      },
+      audio: {
+        preferred: "One narration MP3 per intro/section/outro scene.",
+        timing: "Probe each MP3 duration and set matching durationMs with 500-1000ms of visual tail.",
+        voiceExample: "af_heart via Venice tts-kokoro",
+      },
+    },
     requestShape: {
       composition: REMOTION_LAUNCH_DEMO_COMPOSITION_ID,
       outputKey: "launch-demo/example.mp4",
@@ -151,6 +194,7 @@ const compositionSchemas = {
         intro: {
           headline: "Prism Refactory",
           subhead: "Launch-ready media for agent-native workflows",
+          audioUrl: "optional intro narration URL or local asset path",
           durationMs: 4500,
         },
         sections: [
@@ -161,6 +205,7 @@ const compositionSchemas = {
             bullets: ["Screenshot panels", "Video clips", "Branded motion"],
             consoleLabel: "Prism console",
             consoleText: "Optional typed prompt overlay.",
+            audioUrl: "optional section narration URL or local asset path",
             backgroundImageUrl: "optional section background image",
             mediaUrl: "optional http(s) URL or local asset path",
             mediaType: "image or video",
@@ -173,6 +218,7 @@ const compositionSchemas = {
           headline: "Launch the workflow",
           body: "Briefs, demos, shorts, and public media from the same pipeline.",
           cta: "Build with Dark Factory",
+          audioUrl: "optional outro narration URL or local asset path",
           durationMs: 5000,
         },
       },

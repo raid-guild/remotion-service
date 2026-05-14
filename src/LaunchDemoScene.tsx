@@ -31,6 +31,7 @@ export type LaunchDemoBrand = {
 export type LaunchDemoIntro = {
   headline?: string;
   subhead?: string;
+  audioUrl?: string;
   durationMs?: number;
 };
 
@@ -41,6 +42,7 @@ export type LaunchDemoSection = {
   bullets?: string[];
   consoleLabel?: string;
   consoleText?: string;
+  audioUrl?: string;
   backgroundImageUrl?: string;
   mediaUrl?: string;
   mediaType?: LaunchDemoMediaType;
@@ -53,6 +55,7 @@ export type LaunchDemoOutro = {
   headline?: string;
   body?: string;
   cta?: string;
+  audioUrl?: string;
   durationMs?: number;
 };
 
@@ -150,6 +153,15 @@ const getDefaultSections = (): LaunchDemoSection[] => [
     durationMs: DEFAULT_SECTION_MS,
   },
 ];
+
+const SequenceAudio: React.FC<{
+  audioUrl: string | undefined;
+  volume?: number;
+}> = ({ audioUrl, volume = 1 }) => {
+  const src = resolveAsset(audioUrl);
+  if (!src) return null;
+  return <Audio src={src} volume={volume} />;
+};
 
 const LaunchLogo: React.FC<{
   logoUrl: string | null;
@@ -276,15 +288,7 @@ const MediaPanel: React.FC<{
           ))}
         </div>
 
-        <div
-          style={{
-            position: "absolute",
-            inset: "44px 0 0",
-            padding: 24,
-            background:
-              "radial-gradient(circle at center, rgba(124,134,255,0.14) 0%, rgba(0,1,29,0.18) 42%, rgba(0,1,29,0.72) 100%)",
-          }}
-        >
+        <div style={{ position: "absolute", inset: "44px 0 0" }}>
           {mediaSrc ? (
             mediaType === "video" ? (
               <Video
@@ -298,7 +302,7 @@ const MediaPanel: React.FC<{
                 style={{
                   width: "100%",
                   height: "100%",
-                  objectFit: "contain",
+                  objectFit: "cover",
                   filter: "saturate(1.08) contrast(1.02)",
                 }}
                 muted
@@ -309,7 +313,7 @@ const MediaPanel: React.FC<{
                 style={{
                   width: "100%",
                   height: "100%",
-                  objectFit: "contain",
+                  objectFit: "cover",
                   filter: "saturate(1.08) contrast(1.02)",
                 }}
               />
@@ -439,6 +443,7 @@ export const LaunchDemoScene: React.FC<LaunchDemoProps> = ({
   const resolvedIntro = {
     headline: intro?.headline ?? brandName,
     subhead: intro?.subhead ?? "Launch-ready media for agent-native workflows",
+    audioUrl: intro?.audioUrl,
     durationMs: intro?.durationMs ?? DEFAULT_INTRO_MS,
   };
   const resolvedSections = sections && sections.length > 0 ? sections : getDefaultSections();
@@ -446,6 +451,7 @@ export const LaunchDemoScene: React.FC<LaunchDemoProps> = ({
     headline: outro?.headline ?? "Launch the workflow",
     body: outro?.body ?? "Briefs, demos, shorts, and public media from the same pipeline.",
     cta: outro?.cta ?? "Build with Dark Factory",
+    audioUrl: outro?.audioUrl,
     durationMs: outro?.durationMs ?? DEFAULT_OUTRO_MS,
   };
 
@@ -534,6 +540,7 @@ export const LaunchDemoScene: React.FC<LaunchDemoProps> = ({
       </div>
 
       <Sequence from={0} durationInFrames={introFrames}>
+        <SequenceAudio audioUrl={resolvedIntro.audioUrl} volume={audioFade} />
         <BackgroundImageLayer src={introBackgroundUrl} opacity={0.34} />
         <AbsoluteFill
           style={{
@@ -607,6 +614,7 @@ export const LaunchDemoScene: React.FC<LaunchDemoProps> = ({
           from={section.from}
           durationInFrames={section.frames}
         >
+          <SequenceAudio audioUrl={section.audioUrl} volume={audioFade} />
           <BackgroundImageLayer
             src={resolveAsset(section.backgroundImageUrl) ?? sectionBackgroundUrl}
             opacity={0.2}
@@ -732,6 +740,7 @@ export const LaunchDemoScene: React.FC<LaunchDemoProps> = ({
       ))}
 
       <Sequence from={outroFrom} durationInFrames={outroFrames}>
+        <SequenceAudio audioUrl={resolvedOutro.audioUrl} volume={audioFade} />
         <BackgroundImageLayer src={outroBackgroundUrl} opacity={0.36} />
         <AbsoluteFill
           style={{
