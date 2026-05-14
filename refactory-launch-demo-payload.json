@@ -1,0 +1,66 @@
+{
+  "composition": "LaunchDemoScene",
+  "outputKey": "launch-demo/refactory-local-draft.mp4",
+  "props": {
+    "brand": {
+      "name": "Refactory",
+      "logoUrl": "/assets/refactory_superprism_logo.webp",
+      "accent": "#d8a84e",
+      "background": "#080706",
+      "text": "#f4ead1"
+    },
+    "intro": {
+      "headline": "Refactory",
+      "subhead": "Workflow automation for the Superprism stack",
+      "durationMs": 4800
+    },
+    "sections": [
+      {
+        "eyebrow": "Intent",
+        "headline": "Describe the workflow you want",
+        "body": "Refactory turns a plain-language request into a durable workflow that can run on a schedule.",
+        "bullets": ["Natural-language intake", "Reusable workflow definitions", "Discord delivery"],
+        "consoleLabel": "Prism console",
+        "consoleText": "Create a new workflow to create a Daily Brief from community memory, run daily at 9am and send notification to discord.",
+        "mediaUrl": "/assets/reafctory_request-flow-screenshot.png",
+        "mediaType": "image",
+        "durationMs": 10500
+      },
+      {
+        "eyebrow": "Control plane",
+        "headline": "Requests become workflows, tasks, and artifacts",
+        "body": "The Prism Site/API keeps intent, process, execution state, and outputs inspectable across retries and handoffs.",
+        "bullets": ["Requests capture intent", "Workflows encode process", "Artifacts preserve outputs"],
+        "mediaUrl": "/assets/refactory_workflows-screenshot.png",
+        "mediaType": "image",
+        "durationMs": 9000
+      },
+      {
+        "eyebrow": "Memory",
+        "headline": "Community memory becomes operational context",
+        "body": "Refactory connects to Prism Memory so briefs can pull from transcripts, digests, artifacts, and historical activity.",
+        "bullets": ["Memory for what happened", "Knowledge for stable context", "Artifacts for evidence"],
+        "mediaUrl": "/assets/refactory_knowledge-graph-screenshot.png",
+        "mediaType": "image",
+        "durationMs": 9000
+      },
+      {
+        "eyebrow": "Execution",
+        "headline": "Watch the workflow move through the board",
+        "body": "Async workers run the process, store outputs, and return links that can be delivered back to the community.",
+        "bullets": ["Scheduled at 9am", "Runs through the stack", "Notifies Discord"],
+        "mediaUrl": "/assets/refactory_request-board.mp4",
+        "mediaType": "video",
+        "startSeconds": 0,
+        "endSeconds": 13.6,
+        "durationMs": 12000
+      }
+    ],
+    "outro": {
+      "headline": "Refactory for Superprism",
+      "body": "Create repeatable workflows from community memory, agent execution, and durable Prism artifacts.",
+      "cta": "Build the workflow",
+      "durationMs": 5600
+    }
+  }
+}

@@ -153,6 +153,8 @@ const compositionSchemas = {
             headline: "Reveal text on the left",
             body: "Media transitions on the right.",
             bullets: ["Screenshot panels", "Video clips", "Branded motion"],
+            consoleLabel: "Prism console",
+            consoleText: "Optional typed prompt overlay.",
             mediaUrl: "optional http(s) URL or local asset path",
             mediaType: "image or video",
             startSeconds: "optional video trim start",

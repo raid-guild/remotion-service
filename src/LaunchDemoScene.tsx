@@ -33,6 +33,8 @@ export type LaunchDemoSection = {
   headline: string;
   body?: string;
   bullets?: string[];
+  consoleLabel?: string;
+  consoleText?: string;
   mediaUrl?: string;
   mediaType?: LaunchDemoMediaType;
   startSeconds?: number;
@@ -177,6 +179,16 @@ const MediaPanel: React.FC<{
     },
   });
   const exit = clampProgress(localFrame, Math.max(1, sectionFrames - fps), fps);
+  const typedText =
+    section.consoleText && section.consoleText.length > 0
+      ? section.consoleText.slice(
+          0,
+          Math.min(
+            section.consoleText.length,
+            Math.floor(Math.max(0, localFrame - fps * 0.55) / 1.45),
+          ),
+        )
+      : "";
 
   return (
     <div
@@ -303,6 +315,56 @@ const MediaPanel: React.FC<{
             mixBlendMode: "screen",
           }}
         />
+
+        {section.consoleText ? (
+          <div
+            style={{
+              position: "absolute",
+              left: 34,
+              right: 34,
+              bottom: 34,
+              padding: "18px 22px",
+              border: `1px solid rgba(216,168,78,0.42)`,
+              background: "rgba(5,4,3,0.86)",
+              boxShadow: "0 18px 50px rgba(0,0,0,0.44)",
+              fontFamily: "'Courier New', monospace",
+            }}
+          >
+            <div
+              style={{
+                marginBottom: 8,
+                color: accent,
+                fontSize: 14,
+                fontWeight: 700,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+              }}
+            >
+              {section.consoleLabel ?? "Prism console"}
+            </div>
+            <div
+              style={{
+                color: "rgba(244,234,209,0.92)",
+                fontSize: 22,
+                lineHeight: 1.3,
+                minHeight: 58,
+              }}
+            >
+              <span>{typedText}</span>
+              <span
+                style={{
+                  display: "inline-block",
+                  width: 12,
+                  height: 24,
+                  marginLeft: 4,
+                  background: accent,
+                  opacity: Math.floor(localFrame / 12) % 2 === 0 ? 1 : 0.2,
+                  transform: "translateY(4px)",
+                }}
+              />
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
