@@ -2,8 +2,9 @@ import express from "express";
 import { bundle } from "@remotion/bundler";
 import { getCompositions, renderMedia, selectComposition } from "@remotion/renderer";
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { NodeHttpHandler } from "@smithy/node-http-handler";
 import { createReadStream, createWriteStream } from "node:fs";
-import { access, copyFile, mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
+import { access, copyFile, mkdtemp, mkdir, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -46,6 +47,11 @@ const forcePathStyle =
   (process.env.PAPERCLIP_STORAGE_S3_FORCE_PATH_STYLE ??
     process.env.REMOTION_STORAGE_S3_FORCE_PATH_STYLE ??
     "false") === "true";
+const s3ConnectionTimeoutMs = Number(
+  process.env.REMOTION_STORAGE_S3_CONNECTION_TIMEOUT_MS ?? 5000,
+);
+const s3SocketTimeoutMs = Number(process.env.REMOTION_STORAGE_S3_SOCKET_TIMEOUT_MS ?? 30000);
+const outputProxyTimeoutMs = Number(process.env.REMOTION_OUTPUT_PROXY_TIMEOUT_MS ?? 20000);
 const prefix =
   (process.env.PAPERCLIP_STORAGE_S3_PREFIX ??
     process.env.REMOTION_STORAGE_S3_PREFIX ??
@@ -65,6 +71,11 @@ const s3Client = bucketName
       region,
       endpoint,
       forcePathStyle,
+      maxAttempts: 2,
+      requestHandler: new NodeHttpHandler({
+        connectionTimeout: s3ConnectionTimeoutMs,
+        socketTimeout: s3SocketTimeoutMs,
+      }),
     })
   : null;
 const execFileAsync = promisify(execFile);
@@ -527,6 +538,57 @@ function isAllowedOutputKey(key: string): boolean {
   if (key.includes("..")) return false;
   if (!prefix) return true;
   return key === prefix || key.startsWith(`${prefix}/`);
+}
+
+function buildProxyAbortSignal(): AbortSignal | undefined {
+  if (!Number.isFinite(outputProxyTimeoutMs) || outputProxyTimeoutMs <= 0) {
+    return undefined;
+  }
+
+  return AbortSignal.timeout(outputProxyTimeoutMs);
+}
+
+function parseRangeHeader(rangeHeader: string | undefined, size?: number): {
+  header: string;
+  start?: number;
+  end?: number;
+} | null {
+  if (!rangeHeader) return null;
+
+  const match = rangeHeader.match(/^bytes=(\d*)-(\d*)$/);
+  if (!match) return null;
+
+  const rawStart = match[1];
+  const rawEnd = match[2];
+  if (!rawStart && !rawEnd) return null;
+
+  if (size === undefined) {
+    return { header: `bytes=${rawStart}-${rawEnd}` };
+  }
+
+  let start = rawStart ? Number(rawStart) : undefined;
+  let end = rawEnd ? Number(rawEnd) : undefined;
+
+  if (start === undefined) {
+    const suffixLength = Number(rawEnd);
+    if (!Number.isFinite(suffixLength) || suffixLength <= 0) return null;
+    start = Math.max(size - suffixLength, 0);
+    end = size - 1;
+  } else {
+    if (!Number.isFinite(start) || start < 0) return null;
+    end = end === undefined ? size - 1 : end;
+  }
+
+  if (!Number.isFinite(end) || end < start || start >= size) {
+    return null;
+  }
+
+  end = Math.min(end, size - 1);
+  return {
+    header: `bytes=${start}-${end}`,
+    start,
+    end,
+  };
 }
 
 async function cleanupRenderArtifacts(options: {
@@ -1107,6 +1169,7 @@ app.get("/render-assets/:assetId", (req, res) => {
 app.get(/^\/render-outputs\/(.+)$/, async (req, res) => {
   const rawKey = String(req.params[0] ?? "");
   const key = rawKey.replace(/^\/+/, "");
+  const requestedRange = req.headers.range;
 
   if (!key || !isAllowedOutputKey(key)) {
     res.sendStatus(404);
@@ -1127,8 +1190,27 @@ app.get(/^\/render-outputs\/(.+)$/, async (req, res) => {
         return;
       }
 
+      const fileStat = await stat(filePath);
+      const range = parseRangeHeader(requestedRange, fileStat.size);
+      if (requestedRange && !range) {
+        res.status(416).setHeader("Content-Range", `bytes */${fileStat.size}`).end();
+        return;
+      }
+
       res.setHeader("Content-Type", "video/mp4");
-      createReadStream(filePath).on("error", () => res.sendStatus(404)).pipe(res);
+      res.setHeader("Accept-Ranges", "bytes");
+      if (range?.start !== undefined && range.end !== undefined) {
+        res.status(206);
+        res.setHeader("Content-Range", `bytes ${range.start}-${range.end}/${fileStat.size}`);
+        res.setHeader("Content-Length", String(range.end - range.start + 1));
+        createReadStream(filePath, { start: range.start, end: range.end })
+          .on("error", () => res.destroy())
+          .pipe(res);
+        return;
+      }
+
+      res.setHeader("Content-Length", String(fileStat.size));
+      createReadStream(filePath).on("error", () => res.destroy()).pipe(res);
       return;
     }
 
@@ -1137,22 +1219,44 @@ app.get(/^\/render-outputs\/(.+)$/, async (req, res) => {
       return;
     }
 
+    const range = parseRangeHeader(requestedRange);
+    if (requestedRange && !range) {
+      res.sendStatus(416);
+      return;
+    }
+
     const object = await s3Client.send(
       new GetObjectCommand({
         Bucket: bucketName,
         Key: key,
+        Range: range?.header,
       }),
+      { abortSignal: buildProxyAbortSignal() },
     );
 
     res.setHeader("Content-Type", object.ContentType ?? "video/mp4");
+    res.setHeader("Accept-Ranges", "bytes");
+    if (object.ContentRange) {
+      res.status(206);
+      res.setHeader("Content-Range", object.ContentRange);
+    }
     if (object.ContentLength !== undefined) {
       res.setHeader("Content-Length", String(object.ContentLength));
     }
 
-    (object.Body as unknown as Readable).pipe(res);
+    (object.Body as unknown as Readable).on("error", (error) => {
+      console.error("render-outputs stream failed", { key, error });
+      res.destroy(error);
+    }).pipe(res);
   } catch (error) {
     console.error("render-outputs failed", { key, error });
     if (!res.headersSent) {
+      const errorName = (error as { name?: string })?.name;
+      if (errorName === "AbortError" || errorName === "TimeoutError") {
+        res.status(504).json({ error: "Output proxy timed out", key });
+        return;
+      }
+
       res.sendStatus(404);
     } else {
       res.end();
