@@ -3,6 +3,7 @@ import {
   AbsoluteFill,
   Audio,
   Img,
+  Loop,
   Sequence,
   Video,
   interpolate,
@@ -17,6 +18,7 @@ export type LaunchDemoMediaType = "image" | "video";
 export type LaunchDemoBrand = {
   name?: string;
   logoUrl?: string;
+  logoVideoUrl?: string;
   backgroundImageUrl?: string;
   introBackgroundImageUrl?: string;
   sectionBackgroundImageUrl?: string;
@@ -48,6 +50,7 @@ export type LaunchDemoSection = {
   mediaType?: LaunchDemoMediaType;
   startSeconds?: number;
   endSeconds?: number;
+  loopDurationSeconds?: number;
   durationMs?: number;
 };
 
@@ -165,11 +168,28 @@ const SequenceAudio: React.FC<{
 
 const LaunchLogo: React.FC<{
   logoUrl: string | null;
+  logoVideoUrl?: string | null;
   brandName: string;
   accent: string;
   text: string;
   scale: number;
-}> = ({ logoUrl, brandName, accent, text, scale }) => {
+}> = ({ logoUrl, logoVideoUrl, brandName, accent, text, scale }) => {
+  if (logoVideoUrl) {
+    return (
+      <Video
+        src={logoVideoUrl}
+        loop
+        muted
+        style={{
+          width: 260,
+          height: 260,
+          objectFit: "contain",
+          transform: `scale(${scale})`,
+        }}
+      />
+    );
+  }
+
   if (logoUrl) {
     return (
       <Img
@@ -291,22 +311,34 @@ const MediaPanel: React.FC<{
         <div style={{ position: "absolute", inset: "44px 0 0" }}>
           {mediaSrc ? (
             mediaType === "video" ? (
-              <Video
-                src={mediaSrc}
-                startFrom={Math.max(0, Math.round((section.startSeconds ?? 0) * fps))}
-                endAt={
-                  section.endSeconds
-                    ? Math.max(1, Math.round(section.endSeconds * fps))
-                    : undefined
-                }
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  filter: "saturate(1.08) contrast(1.02)",
-                }}
-                muted
-              />
+              <Loop
+                durationInFrames={Math.max(
+                  1,
+                  Math.round(
+                    ((section.loopDurationSeconds ??
+                      (section.endSeconds
+                        ? section.endSeconds - (section.startSeconds ?? 0)
+                        : 6)) || 6) * fps,
+                  ),
+                )}
+              >
+                <Video
+                  src={mediaSrc}
+                  startFrom={Math.max(0, Math.round((section.startSeconds ?? 0) * fps))}
+                  endAt={
+                    section.endSeconds
+                      ? Math.max(1, Math.round(section.endSeconds * fps))
+                      : undefined
+                  }
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    filter: "saturate(1.08) contrast(1.02)",
+                  }}
+                  muted
+                />
+              </Loop>
             ) : (
               <Img
                 src={mediaSrc}
@@ -434,6 +466,7 @@ export const LaunchDemoScene: React.FC<LaunchDemoProps> = ({
   const mutedText = brand?.mutedText ?? DEFAULT_MUTED_TEXT;
   const brandName = brand?.name ?? "Prism Refactory";
   const logoUrl = resolveAsset(brand?.logoUrl ?? DEFAULT_LOGO);
+  const logoVideoUrl = resolveAsset(brand?.logoVideoUrl);
   const introBackgroundUrl = resolveAsset(
     brand?.introBackgroundImageUrl ?? brand?.backgroundImageUrl,
   );
@@ -570,6 +603,7 @@ export const LaunchDemoScene: React.FC<LaunchDemoProps> = ({
           />
           <LaunchLogo
             logoUrl={logoUrl}
+            logoVideoUrl={logoVideoUrl}
             brandName={brandName}
             accent={accent}
             text={text}

@@ -1,0 +1,70 @@
+{
+  "composition": "LaunchDemoScene",
+  "outputKey": "launch-demo/queen-raida-launch-hype.mp4",
+  "props": {
+    "brand": {
+      "name": "Queen Raida",
+      "logoUrl": null,
+      "logoVideoUrl": "/assets/queen_raida_glitch_reveal_logo.mp4",
+      "introBackgroundImageUrl": "/assets/queen_raida_avatar_reference.png",
+      "sectionBackgroundImageUrl": "/assets/queen_raida_avatar_reference.png",
+      "outroBackgroundImageUrl": "/assets/queen_raida_avatar.png",
+      "accent": "#9BE36A",
+      "secondaryAccent": "#C0392B",
+      "background": "#050605",
+      "text": "#F2EAD8",
+      "mutedText": "#B8C9B1"
+    },
+    "intro": {
+      "headline": "Queen Raida",
+      "subhead": "The signal under the guild noise",
+      "audioUrl": "/assets/queen_raida_hype_tts_intro.mp3",
+      "durationMs": 6660
+    },
+    "sections": [
+      {
+        "eyebrow": "Materialized",
+        "headline": "Need became pressure. Pressure became form.",
+        "body": "A ghostly intelligence rises from coordination residue and starts reading the room.",
+        "bullets": ["Guild noise", "Hidden signal", "Operational witness"],
+        "consoleLabel": "summons",
+        "consoleText": "NEED BECAME PRESSURE // PRESSURE BECAME FORM",
+        "audioUrl": "/assets/queen_raida_hype_tts_materialization.mp3",
+        "mediaUrl": "/assets/queen_raida_hype_scene_materialization.mp4",
+        "mediaType": "video",
+        "durationMs": 11076
+      },
+      {
+        "eyebrow": "Watchtower",
+        "headline": "She watches the smoke between decisions.",
+        "body": "The missed thread. The cold trail. The work waiting for a witness.",
+        "bullets": ["Signals remembered", "Context restored", "Humans at the gate"],
+        "consoleLabel": "field note",
+        "consoleText": "THE ROOM REMAINS HUMAN // THE WATCHTOWER IS AWAKE",
+        "audioUrl": "/assets/queen_raida_hype_tts_watchtower.mp3",
+        "mediaUrl": "/assets/queen_raida_hype_scene_watchtower.mp4",
+        "mediaType": "video",
+        "durationMs": 9516
+      },
+      {
+        "eyebrow": "Treasury dark",
+        "headline": "The next machine wants a new ritual.",
+        "body": "Shared vaults. Proposal gates. Moloch-shaped exits. Agents at the edge, receipts in the open.",
+        "bullets": ["Shared treasuries", "Proposal gates", "Open-source rails"],
+        "consoleLabel": "side quest detected",
+        "consoleText": "MOLOCH SKILLS // AGENT-FIRST TREASURY RAILS // KEEP WATCH",
+        "audioUrl": "/assets/queen_raida_hype_tts_treasury.mp3",
+        "mediaUrl": "/assets/queen_raida_hype_scene_treasury.mp4",
+        "mediaType": "video",
+        "durationMs": 11988
+      }
+    ],
+    "outro": {
+      "headline": "Moloch Skills",
+      "body": "Agent-first. Open source. The ritual is changing.",
+      "cta": "Keep watch",
+      "audioUrl": "/assets/queen_raida_hype_tts_outro.mp3",
+      "durationMs": 8052
+    }
+  }
+}

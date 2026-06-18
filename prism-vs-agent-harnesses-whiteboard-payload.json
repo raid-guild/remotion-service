@@ -1,0 +1,88 @@
+{
+  "composition": "WhiteboardExplainerScene",
+  "outputKey": "explainers/prism-vs-agent-harnesses-whiteboard.mp4",
+  "props": {
+    "title": "Prism vs Agent Harnesses",
+    "subtitle": "Deployable agent workspace infrastructure",
+    "audioUrl": "/assets/prism_vs_harnesses_whiteboard_tts.mp3",
+    "backgroundImageUrl": "/assets/prism_vs_harnesses_landscape.jpg",
+    "logoUrl": "/assets/superprism_logo.png",
+    "accent": "#99e500",
+    "secondaryAccent": "#7c86ff",
+    "ink": "#172033",
+    "scenes": [
+      {
+        "kind": "setup",
+        "eyebrow": "The setup",
+        "headline": "Prism vs Agent Harnesses",
+        "body": "AI agent tools are moving fast. They are not all solving the same problem.",
+        "labels": ["OpenClaw", "Hermes", "Prism"],
+        "durationMs": 6800
+      },
+      {
+        "kind": "harness",
+        "eyebrow": "Agent harness pattern",
+        "headline": "Harnesses run the agent turn.",
+        "body": "Prompt. Tools. Task runner. Action goes in and out.",
+        "labels": ["prompt", "tools", "task runner"],
+        "durationMs": 7200
+      },
+      {
+        "kind": "limits",
+        "eyebrow": "Where harnesses stop",
+        "headline": "Real teams need more than execution.",
+        "body": "Users, memory, workflows, approvals, deployment, source adapters, and artifacts start surrounding the box.",
+        "labels": ["users", "memory", "workflows", "approvals", "deploys", "artifacts"],
+        "durationMs": 8400
+      },
+      {
+        "kind": "workspace",
+        "eyebrow": "Prism enters",
+        "headline": "Prism is a deployable workspace platform.",
+        "body": "The agent runtime sits inside a broader operating surface for team work.",
+        "labels": ["sources", "requests", "workflows", "tasks", "artifacts", "deploy target"],
+        "durationMs": 8400
+      },
+      {
+        "kind": "request-flow",
+        "eyebrow": "From conversation to execution",
+        "headline": "A message becomes structured work.",
+        "body": "A request can carry context, references, status, owner, workflow state, and execution history.",
+        "labels": ["Discord", "Request", "Workflow", "Artifact"],
+        "durationMs": 8200
+      },
+      {
+        "kind": "memory",
+        "eyebrow": "Memory and knowledge",
+        "headline": "The agent does not start from zero.",
+        "body": "Prism separates rolling community memory from durable knowledge so context arrives when it matters.",
+        "labels": ["Memory", "Knowledge", "Agent"],
+        "durationMs": 7600
+      },
+      {
+        "kind": "comparison",
+        "eyebrow": "The comparison",
+        "headline": "Harnesses run agents. Prism runs work through agents.",
+        "body": "The question widens from execution to the whole operating loop around execution.",
+        "labels": ["OpenClaw", "Hermes", "Prism"],
+        "durationMs": 7600
+      },
+      {
+        "kind": "loop",
+        "eyebrow": "Core claim",
+        "headline": "Useful AI work needs infrastructure around the agent.",
+        "body": "Capture, understand, execute, review, remember.",
+        "labels": ["capture", "understand", "execute", "review", "remember"],
+        "durationMs": 7200
+      },
+      {
+        "kind": "outro",
+        "eyebrow": "Prism",
+        "headline": "Deployable agent workspace infrastructure",
+        "body": "Agent harnesses help agents run. Prism helps teams run work through agents.",
+        "labels": ["superprism.io"],
+        "durationMs": 5200
+      }
+    ]
+  }
+}

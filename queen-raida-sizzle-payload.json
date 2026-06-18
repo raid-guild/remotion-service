@@ -1,0 +1,17 @@
+{
+  "composition": "QueenRaidaSizzle",
+  "outputKey": "launch-demo/queen-raida-sizzle.mp4",
+  "props": {
+    "audioUrl": "/assets/queen_raida_blarm.m4a",
+    "logoVideoUrl": "/assets/queen_raida_glitch_reveal_logo.mp4",
+    "backgroundImageUrl": "/assets/queen_raida_avatar_reference.png",
+    "avatarUrl": "/assets/queen_raida_avatar.png",
+    "clips": [
+      "/assets/queen_raida_hype_scene_materialization.mp4",
+      "/assets/queen_raida_hype_scene_watchtower.mp4",
+      "/assets/queen_raida_hype_scene_treasury.mp4"
+    ],
+    "promptText": "Create a proposal against the RaidGuild treasury to build a community operating system for agents, members, projects, and shared work.",
+    "durationMs": 28000
+  }
+}

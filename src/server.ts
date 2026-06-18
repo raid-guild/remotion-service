@@ -15,8 +15,11 @@ import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import {
   REMOTION_COMPOSITION_ID,
+  REMOTION_FIRESIDE_RECAP_COMPOSITION_ID,
   REMOTION_LAUNCH_DEMO_COMPOSITION_ID,
+  REMOTION_QUEEN_RAIDA_SIZZLE_COMPOSITION_ID,
   REMOTION_SHORT_COMPOSITION_ID,
+  REMOTION_WHITEBOARD_EXPLAINER_COMPOSITION_ID,
 } from "./constants.js";
 import { type SceneProps, type SegmentMetadata } from "./segmentTiming.js";
 
@@ -190,6 +193,7 @@ const compositionSchemas = {
         brand: {
           name: "Prism Refactory",
           logoUrl: "optional http(s) URL or local asset path",
+          logoVideoUrl: "optional mp4/webm logo reveal URL or local asset path",
           backgroundImageUrl: "optional legacy intro background image",
           introBackgroundImageUrl: "optional intro background image",
           sectionBackgroundImageUrl: "optional default slide background image",
@@ -222,6 +226,7 @@ const compositionSchemas = {
             mediaType: "image or video",
             startSeconds: "optional video trim start",
             endSeconds: "optional video trim end",
+            loopDurationSeconds: "optional video loop duration when the scene is longer than the clip",
             durationMs: 9000,
           },
         ],
@@ -240,6 +245,140 @@ const compositionSchemas = {
       "If `sections` is omitted, the composition renders with placeholder demo sections.",
       "Use `mediaType: video` for screen recordings and `mediaType: image` for screenshots.",
     ],
+  },
+  [REMOTION_QUEEN_RAIDA_SIZZLE_COMPOSITION_ID]: {
+    composition: REMOTION_QUEEN_RAIDA_SIZZLE_COMPOSITION_ID,
+    endpoint: "/render or /render-async",
+    requestShape: {
+      composition: REMOTION_QUEEN_RAIDA_SIZZLE_COMPOSITION_ID,
+      outputKey: "launch-demo/queen-raida-sizzle.mp4",
+      props: {
+        audioUrl: "optional m4a/mp3 background track URL or local asset path",
+        logoVideoUrl: "optional mp4/webm logo reveal URL or local asset path",
+        backgroundImageUrl: "optional atmospheric background image",
+        avatarUrl: "optional image for materialization silhouette",
+        clips: ["optional mp4/webm scene clips"],
+        promptText: "typed prompt shown in the final scene; not narrated by default",
+        durationMs: 28000,
+      },
+    },
+    storyboard: [
+      "Ghost in the System: black/signal board with duplicated UI layers.",
+      "Entity Manifestation: silhouette forms from particles and glitch trails.",
+      "Signal Acquisition: source video and text emerge through static/noise.",
+      "Treasury prompt: typed proposal prompt over a glitchy outro.",
+      "Announcement outro: Moloch Skills and raida.raidguild.org.",
+    ],
+    mediaRequirements: {
+      audio: "Background music/effects only. Avoid putting the final prompt in TTS.",
+      clips: "Short portrait or square Queen Raida clips work; the scene crops/glitches them intentionally.",
+      logoVideo: "Use mp4/webm for animated logo reveals. GIFs should be converted first.",
+    },
+  },
+  [REMOTION_WHITEBOARD_EXPLAINER_COMPOSITION_ID]: {
+    composition: REMOTION_WHITEBOARD_EXPLAINER_COMPOSITION_ID,
+    endpoint: "/render or /render-async",
+    requestShape: {
+      composition: REMOTION_WHITEBOARD_EXPLAINER_COMPOSITION_ID,
+      outputKey: "explainers/prism-vs-agent-harnesses.mp4",
+      props: {
+        title: "Prism vs Agent Harnesses",
+        subtitle: "Deployable agent workspace infrastructure",
+        audioUrl: "optional narration mp3/m4a URL or local asset path",
+        backgroundImageUrl: "/assets/prism_vs_harnesses_landscape.jpg",
+        logoUrl: "/assets/superprism_logo.png",
+        accent: "#99e500",
+        secondaryAccent: "#7c86ff",
+        ink: "#172033",
+        scenes: [
+          {
+            kind: "setup | harness | limits | workspace | request-flow | memory | comparison | loop | outro",
+            eyebrow: "optional scene label",
+            headline: "required headline",
+            body: "optional supporting copy",
+            labels: ["optional diagram labels"],
+            durationMs: 8000,
+          },
+        ],
+      },
+    },
+    storyboard: [
+      "Setup: OpenClaw, Hermes, and Prism branch from AI agents.",
+      "Harness pattern: prompt, tools, and task runner.",
+      "Harness limits: users, memory, workflows, approvals, deployment, artifacts.",
+      "Prism workspace: sources, requests, workflows, tasks, artifacts, deploy target.",
+      "Request flow: conversation becomes structured work.",
+      "Memory and knowledge: rolling context and durable docs feed the agent.",
+      "Comparison: harness boxes versus workspace platform.",
+      "Loop: capture, understand, execute, review, remember.",
+    ],
+    mediaRequirements: {
+      background: "Light or subtle background image; diagrams render over a whiteboard surface.",
+      logo: "Transparent PNG works best for the corner mark.",
+      audio: "Optional full narration track. Scene durations should be adjusted to match it.",
+    },
+  },
+  [REMOTION_FIRESIDE_RECAP_COMPOSITION_ID]: {
+    composition: REMOTION_FIRESIDE_RECAP_COMPOSITION_ID,
+    endpoint: "/render or /render-async",
+    requestShape: {
+      composition: REMOTION_FIRESIDE_RECAP_COMPOSITION_ID,
+      outputKey: "firesides/example-recap.mp4",
+      props: {
+        title: "Justice on Clawbank",
+        subtitle: "Agents, companies, friction, and building through the AI timeline",
+        introAudioUrl: "optional intro narration mp3/m4a URL or local asset path",
+        introDurationMs: 7200,
+        guest: {
+          name: "Justice",
+          handle: "@singularityhack",
+          avatarUrl: "/assets/fireside_justice_avatar.jpg",
+        },
+        host: {
+          name: "Dekan",
+          handle: "@dekanbro",
+          avatarUrl: "optional host avatar URL or local asset path",
+        },
+        backgroundUrl: "/assets/fireside_campfire.png",
+        accent: "#F7B267",
+        ember: "#E05243",
+        text: "#FFF3DE",
+        cards: [
+          {
+            title: "Friction as the roadmap",
+            body: "Short recap copy for this beat.",
+            quote: "Optional pull quote.",
+            imageUrl: "/assets/fireside_open_source_security.png",
+            audioUrl: "optional narration mp3/m4a URL or local asset path",
+            durationMs: 9000,
+          },
+        ],
+        outro: {
+          headline: "Watch the full interview",
+          url: "portal.raidguild.org",
+          audioUrl: "optional outro narration mp3/m4a URL or local asset path",
+          durationMs: 8200,
+        },
+      },
+    },
+    required: [
+      "props.guest.name",
+      "props.guest.handle",
+      "props.guest.avatarUrl",
+      "props.cards[0].title",
+      "props.cards[0].body",
+    ],
+    storyboard: [
+      "Intro: fireside title card with guest and host identity bubbles.",
+      "Recap cards: one insight per scene, with background imagery, quote treatment, progress line, and optional per-card TTS.",
+      "Outro: full interview CTA with Portal URL and X handles.",
+    ],
+    mediaRequirements: {
+      backgroundImages: "Square or landscape atmospheric images work; the scene crops them as full-frame textured backgrounds.",
+      avatars: "Square headshots or stylized avatar images work best.",
+      audio:
+        "Prefer one narration MP3 per intro/card/outro and set each durationMs to probed audio length plus about 700-1200ms of visual tail.",
+    },
   },
 } as const;
 

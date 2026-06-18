@@ -1,0 +1,68 @@
+{
+  "composition": "FiresideRecapScene",
+  "outputKey": "firesides/clawbank-justice-recap.mp4",
+  "props": {
+    "title": "Justice on Clawbank",
+    "subtitle": "Agents, companies, friction, and building through the AI timeline",
+    "introAudioUrl": "/assets/fireside_crawl_bank_tts_intro.mp3",
+    "introDurationMs": 6500,
+    "guest": {
+      "name": "Justice",
+      "handle": "@singularityhack",
+      "avatarUrl": "/assets/fireside_justice_avatar.jpg"
+    },
+    "host": {
+      "name": "Dekan",
+      "handle": "@dekanbro",
+      "avatarUrl": "/assets/fireside_dekan_avatar.jpg"
+    },
+    "backgroundUrl": "/assets/fireside_campfire.png",
+    "accent": "#F7B267",
+    "ember": "#E05243",
+    "text": "#FFF3DE",
+    "cards": [
+      {
+        "title": "Agents need more than wallets",
+        "body": "Clawbank moves from giving an agent a bank account toward giving your agent a company: economic agency plus legal and operational agency.",
+        "imageUrl": "/assets/fireside_agentic_coding.png",
+        "audioUrl": "/assets/fireside_crawl_bank_tts_agents.mp3",
+        "durationMs": 11400
+      },
+      {
+        "title": "Friction as the roadmap",
+        "body": "The hard parts are not distractions. Crypto workflows, legal wrappers, private-key handling, deployment, security, and trust become the map.",
+        "quote": "Without friction, there's no moat.",
+        "imageUrl": "/assets/fireside_open_source_security.png",
+        "audioUrl": "/assets/fireside_crawl_bank_tts_friction.mp3",
+        "durationMs": 8200
+      },
+      {
+        "title": "Engineering did not get easier",
+        "body": "Model power raises the abstraction level, but it also raises the cost of not understanding your system.",
+        "imageUrl": "/assets/fireside_shared_state.png",
+        "audioUrl": "/assets/fireside_crawl_bank_tts_engineering.mp3",
+        "durationMs": 10900
+      },
+      {
+        "title": "The AI timeline as psychological pressure",
+        "body": "Constant demos can make builders feel their work expires tomorrow. The useful question becomes not just what can I build, but what should I build.",
+        "imageUrl": "/assets/fireside_christmas_morning.png",
+        "audioUrl": "/assets/fireside_crawl_bank_tts_timeline.mp3",
+        "durationMs": 10200
+      },
+      {
+        "title": "Building as art, not just adoption",
+        "body": "Some launches matter because they were worth doing before the market validates them. Build for what should matter next.",
+        "imageUrl": "/assets/fireside_campfire.png",
+        "audioUrl": "/assets/fireside_crawl_bank_tts_art.mp3",
+        "durationMs": 8600
+      }
+    ],
+    "outro": {
+      "headline": "Watch the full interview",
+      "url": "portal.raidguild.org",
+      "audioUrl": "/assets/fireside_crawl_bank_tts_outro.mp3",
+      "durationMs": 7900
+    }
+  }
+}

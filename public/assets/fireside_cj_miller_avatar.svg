@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="70%">
+      <stop offset="0%" stop-color="#5a3722"/>
+      <stop offset="55%" stop-color="#18100b"/>
+      <stop offset="100%" stop-color="#050302"/>
+    </radialGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="400" height="400" fill="url(#bg)"/>
+  <circle cx="200" cy="200" r="152" fill="none" stroke="#F7B267" stroke-width="7" opacity="0.85"/>
+  <circle cx="200" cy="200" r="124" fill="none" stroke="#E05243" stroke-width="2" opacity="0.45"/>
+  <text x="200" y="224" text-anchor="middle" fill="#FFF3DE" font-family="Georgia, serif" font-size="108" font-weight="800" filter="url(#glow)">CJ</text>
+  <text x="200" y="272" text-anchor="middle" fill="#F7B267" font-family="Arial, sans-serif" font-size="24" font-weight="800" letter-spacing="4">FIRESIDE</text>
+</svg>

@@ -1,0 +1,67 @@
+{
+  "composition": "FiresideRecapScene",
+  "outputKey": "firesides/elco-voice-workbench-recap.mp4",
+  "props": {
+    "title": "Elco On Voice-Driven Workbenches",
+    "subtitle": "Specialized agents, creative systems, concrete rough edges, and access through building",
+    "introAudioUrl": "/assets/fireside_elco_voice_workbench_tts_intro.mp3",
+    "introDurationMs": 9900,
+    "guest": {
+      "name": "Elco",
+      "handle": "@elementcomplex",
+      "avatarUrl": "/assets/fireside_elco_avatar.jpg"
+    },
+    "host": {
+      "name": "Dekan",
+      "handle": "@dekanbro",
+      "avatarUrl": "/assets/fireside_dekan_avatar.jpg"
+    },
+    "backgroundUrl": "/assets/fireside_campfire.png",
+    "accent": "#F7B267",
+    "ember": "#E05243",
+    "text": "#FFF3DE",
+    "cards": [
+      {
+        "title": "Voice-driven workbench",
+        "body": "Users speak intent, the system breaks work into parts, and specialized agents get dispatched into the flow.",
+        "imageUrl": "/assets/fireside_agentic_coding.png",
+        "audioUrl": "/assets/fireside_elco_voice_workbench_tts_voice.mp3",
+        "durationMs": 9600
+      },
+      {
+        "title": "Agent roles and handoffs",
+        "body": "Engineering, design, concierge, content, trading, testing, and other personas share memory and hand off work across the system.",
+        "imageUrl": "/assets/fireside_shared_state.png",
+        "audioUrl": "/assets/fireside_elco_voice_workbench_tts_roles.mp3",
+        "durationMs": 12200
+      },
+      {
+        "title": "Creative production system",
+        "body": "A tarot deck and design-system project showed research, memory, structured generation, and iteration working together for complex creative output.",
+        "imageUrl": "/assets/fireside_christmas_morning.png",
+        "audioUrl": "/assets/fireside_elco_voice_workbench_tts_creative.mp3",
+        "durationMs": 11600
+      },
+      {
+        "title": "Concrete rough edges",
+        "body": "Voice reliability, profile serialization, reconnection, subprocess overhead, Discord TTS capture, and misheard destructive commands were all real constraints.",
+        "imageUrl": "/assets/fireside_open_source_security.png",
+        "audioUrl": "/assets/fireside_elco_voice_workbench_tts_edges.mp3",
+        "durationMs": 13400
+      },
+      {
+        "title": "Access through building",
+        "body": "Current AI already lets creative, persistent people build systems that once required credentials, teams, or institutional permission.",
+        "imageUrl": "/assets/fireside_campfire.png",
+        "audioUrl": "/assets/fireside_elco_voice_workbench_tts_access.mp3",
+        "durationMs": 13000
+      }
+    ],
+    "outro": {
+      "headline": "Watch the full interview",
+      "url": "portal.raidguild.org",
+      "audioUrl": "/assets/fireside_elco_voice_workbench_tts_outro.mp3",
+      "durationMs": 8700
+    }
+  }
+}

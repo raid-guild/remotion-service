@@ -1,0 +1,67 @@
+{
+  "composition": "FiresideRecapScene",
+  "outputKey": "firesides/andrej-ai-facilitation-recap.mp4",
+  "props": {
+    "title": "Andrej Berlin On AI Facilitation",
+    "subtitle": "Sensemaking, attention scarcity, Deep Work, and human curation",
+    "introAudioUrl": "/assets/fireside_andrej_facilitation_tts_intro.mp3",
+    "introDurationMs": 9700,
+    "guest": {
+      "name": "Andrej Berlin",
+      "handle": "@kischiman",
+      "avatarUrl": "/assets/fireside_andrej_berlin_avatar.png"
+    },
+    "host": {
+      "name": "Dekan",
+      "handle": "@dekanbro",
+      "avatarUrl": "/assets/fireside_dekan_avatar.jpg"
+    },
+    "backgroundUrl": "/assets/fireside_campfire.png",
+    "accent": "#F7B267",
+    "ember": "#E05243",
+    "text": "#FFF3DE",
+    "cards": [
+      {
+        "title": "AI as facilitation layer",
+        "body": "AI helps turn many people's inputs into shared language that participants can still recognize as their own.",
+        "imageUrl": "/assets/fireside_shared_state.png",
+        "audioUrl": "/assets/fireside_andrej_facilitation_tts_layer.mp3",
+        "durationMs": 10100
+      },
+      {
+        "title": "AI-assisted sensemaking",
+        "body": "Interviews, surveys, profiles, Discord, and Telegram become summaries, dashboards, recommendations, and collaborator matches.",
+        "imageUrl": "/assets/fireside_agentic_coding.png",
+        "audioUrl": "/assets/fireside_andrej_facilitation_tts_sensemaking.mp3",
+        "durationMs": 13100
+      },
+      {
+        "title": "Attention scarcity",
+        "body": "As AI makes it easier to build and generate more, the harder problem becomes choosing what deserves focus.",
+        "imageUrl": "/assets/fireside_open_source_security.png",
+        "audioUrl": "/assets/fireside_andrej_facilitation_tts_attention.mp3",
+        "durationMs": 9000
+      },
+      {
+        "title": "Renewed Deep Work",
+        "body": "A network of experts, founders, residencies, product and design support, AI-enabled research, prototyping, and collective learning.",
+        "imageUrl": "/assets/fireside_christmas_morning.png",
+        "audioUrl": "/assets/fireside_andrej_facilitation_tts_deepwork.mp3",
+        "durationMs": 12300
+      },
+      {
+        "title": "Taste and curation",
+        "body": "AI can expand options, but someone still needs to provide direction, judgment, and a point of view.",
+        "imageUrl": "/assets/fireside_campfire.png",
+        "audioUrl": "/assets/fireside_andrej_facilitation_tts_curation.mp3",
+        "durationMs": 10800
+      }
+    ],
+    "outro": {
+      "headline": "Watch the full interview",
+      "url": "portal.raidguild.org",
+      "audioUrl": "/assets/fireside_andrej_facilitation_tts_outro.mp3",
+      "durationMs": 7900
+    }
+  }
+}

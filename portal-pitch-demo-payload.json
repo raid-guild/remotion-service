@@ -1,0 +1,99 @@
+{
+  "composition": "LaunchDemoScene",
+  "outputKey": "launch-demo/raidguild-portal-pitch-demo.mp4",
+  "props": {
+    "brand": {
+      "name": "RaidGuild Portal",
+      "logoUrl": null,
+      "introBackgroundImageUrl": "/assets/portal_pitch_auth_home_brief.png",
+      "sectionBackgroundImageUrl": "/assets/refactory_prism_topography-background.webp",
+      "outroBackgroundImageUrl": "/assets/portal_pitch_brownbag_sessions.png",
+      "accent": "#E05243",
+      "secondaryAccent": "#3DD6D0",
+      "background": "#090705",
+      "text": "#F6E8D2",
+      "mutedText": "#C6B8A5"
+    },
+    "intro": {
+      "headline": "RaidGuild Portal",
+      "subhead": "A coordination layer for a living builder network",
+      "audioUrl": "/assets/portal_pitch_tts_intro.mp3",
+      "durationMs": 11700
+    },
+    "sections": [
+      {
+        "eyebrow": "Public signal",
+        "headline": "What is RaidGuild doing right now?",
+        "body": "The public home makes current briefs, sessions, projects, posts, and featured activity easier to discover.",
+        "bullets": ["Current brief", "Featured activity", "Project and session surface"],
+        "consoleLabel": "portal signal",
+        "consoleText": "The Portal is a presentation layer for real activity, not a generic marketing site.",
+        "audioUrl": "/assets/portal_pitch_tts_public_signal.mp3",
+        "mediaUrl": "/assets/portal_pitch_home.mp4",
+        "mediaType": "video",
+        "startSeconds": 0,
+        "endSeconds": 12,
+        "durationMs": 12112
+      },
+      {
+        "eyebrow": "Onboarding",
+        "headline": "Join, claim, or create your profile",
+        "body": "Profiles turn identity, skills, roles, links, and contributions into something the community can find.",
+        "bullets": ["Lightweight account path", "Legacy profile claim", "Skills and contribution graph"],
+        "consoleLabel": "member profile",
+        "consoleText": "Profiles are not just user accounts. They are how the community finds people.",
+        "audioUrl": "/assets/portal_pitch_tts_onboarding.mp3",
+        "mediaUrl": "/assets/portal_pitch_join.mp4",
+        "mediaType": "video",
+        "startSeconds": 3,
+        "endSeconds": 15,
+        "durationMs": 12880
+      },
+      {
+        "eyebrow": "Member home",
+        "headline": "A lightweight command center",
+        "body": "Logged-in members can see the current brief, sessions, projects, check-ins, modules, and profile state.",
+        "bullets": ["Current brief", "Sessions and projects", "Contribution paths"],
+        "consoleLabel": "member command",
+        "consoleText": "Turn passive community awareness into active contribution paths.",
+        "audioUrl": "/assets/portal_pitch_tts_dashboard.mp3",
+        "mediaUrl": "/assets/portal_pitch_auth_home_brief.png",
+        "mediaType": "image",
+        "durationMs": 9784
+      },
+      {
+        "eyebrow": "Sessions",
+        "headline": "Live calls become durable archives",
+        "body": "A session can become notes, recordings, resources, related projects, comments, and follow-up material.",
+        "bullets": ["Upcoming and past sessions", "Resources and recordings", "Related work"],
+        "consoleLabel": "session archive",
+        "consoleText": "Calendar event -> notes -> recording -> transcript -> summary -> related projects.",
+        "audioUrl": "/assets/portal_pitch_tts_sessions.mp3",
+        "mediaUrl": "/assets/portal_pitch_sessions.mp4",
+        "mediaType": "video",
+        "startSeconds": 2,
+        "endSeconds": 14,
+        "durationMs": 11464
+      },
+      {
+        "eyebrow": "Agentic admin",
+        "headline": "Manage the Portal from chat",
+        "body": "Queen Raida can help create sessions, attach source material, draft CMS copy, and keep community memory current.",
+        "bullets": ["Reviewable writes", "Source-aware updates", "Agent skills for Portal APIs"],
+        "consoleLabel": "Queen Raida prompt",
+        "consoleText": "Queen Raida, create a Portal session for this event, link the Discord event, make it public, and add the summary.",
+        "audioUrl": "/assets/portal_pitch_tts_agentic.mp3",
+        "mediaUrl": "/assets/queen_raida_hype_scene_watchtower.mp4",
+        "mediaType": "video",
+        "durationMs": 13240
+      }
+    ],
+    "outro": {
+      "headline": "portal.raidguild.org",
+      "body": "Join the Portal, claim your profile, and help shape RaidGuild's living coordination layer.",
+      "cta": "Join the Portal",
+      "audioUrl": "/assets/portal_pitch_tts_close.mp3",
+      "durationMs": 11320
+    }
+  }
+}

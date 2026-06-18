@@ -1,0 +1,68 @@
+{
+  "composition": "FiresideRecapScene",
+  "outputKey": "firesides/kerp-ai-daily-workbench-recap.mp4",
+  "props": {
+    "title": "Kerp On AI As Daily Workbench",
+    "subtitle": "Proxy collapse, patient tutors, context infrastructure, and the new scarce work",
+    "introAudioUrl": "/assets/fireside_kerp_workbench_tts_intro.mp3",
+    "introDurationMs": 9000,
+    "guest": {
+      "name": "Kerp",
+      "handle": "@thekerp",
+      "avatarUrl": "/assets/fireside_kerp_avatar.jpg"
+    },
+    "host": {
+      "name": "Dekan",
+      "handle": "@dekanbro",
+      "avatarUrl": "/assets/fireside_dekan_avatar.jpg"
+    },
+    "backgroundUrl": "/assets/fireside_campfire.png",
+    "accent": "#F7B267",
+    "ember": "#E05243",
+    "text": "#FFF3DE",
+    "cards": [
+      {
+        "title": "AI as daily workbench",
+        "body": "AI showed up as practical infrastructure across teaching, writing, startup judging, course tooling, product experiments, and context carryover.",
+        "quote": "The human still owns the judgment.",
+        "imageUrl": "/assets/fireside_agentic_coding.png",
+        "audioUrl": "/assets/fireside_kerp_workbench_tts_workbench.mp3",
+        "durationMs": 14200
+      },
+      {
+        "title": "Proxy collapse",
+        "body": "When AI weakens essays and reflection papers as proof of understanding, assessment has to move toward live explanation, interviews, oral exams, and follow-up probing.",
+        "imageUrl": "/assets/fireside_open_source_security.png",
+        "audioUrl": "/assets/fireside_kerp_workbench_tts_proxy.mp3",
+        "durationMs": 14900
+      },
+      {
+        "title": "The patient tutor pattern",
+        "body": "Claude Code becomes more than a shortcut: it can explain libraries, schemas, security logic, and implementation decisions while the work is happening.",
+        "imageUrl": "/assets/fireside_shared_state.png",
+        "audioUrl": "/assets/fireside_kerp_workbench_tts_tutor.mp3",
+        "durationMs": 11400
+      },
+      {
+        "title": "Context as infrastructure",
+        "body": "Hypercontext points at the mess everyone recognizes: work spread across machines, chats, clients, cloud sync, style docs, and recurring project notes.",
+        "imageUrl": "/assets/fireside_christmas_morning.png",
+        "audioUrl": "/assets/fireside_kerp_workbench_tts_context.mp3",
+        "durationMs": 13900
+      },
+      {
+        "title": "The scarce work shifts",
+        "body": "As apps, decks, prototypes, and drafts get cheaper, the scarce work becomes taste, sequencing, QA, judgment, source inspection, and distribution.",
+        "imageUrl": "/assets/fireside_campfire.png",
+        "audioUrl": "/assets/fireside_kerp_workbench_tts_scarcity.mp3",
+        "durationMs": 10300
+      }
+    ],
+    "outro": {
+      "headline": "Watch the full interview",
+      "url": "portal.raidguild.org",
+      "audioUrl": "/assets/fireside_kerp_workbench_tts_outro.mp3",
+      "durationMs": 8100
+    }
+  }
+}

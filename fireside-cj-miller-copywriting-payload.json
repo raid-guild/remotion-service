@@ -1,0 +1,67 @@
+{
+  "composition": "FiresideRecapScene",
+  "outputKey": "firesides/cj-miller-ai-copywriting-recap.mp4",
+  "props": {
+    "title": "CJ Miller On AI And Copywriting",
+    "subtitle": "Human voice, GEO, AI content tells, and trust moving back offline",
+    "introAudioUrl": "/assets/fireside_cj_miller_copywriting_tts_intro.mp3",
+    "introDurationMs": 9700,
+    "guest": {
+      "name": "CJ Miller",
+      "handle": "Techtonic Marketing",
+      "avatarUrl": "/assets/fireside_cj_miller_avatar.svg"
+    },
+    "host": {
+      "name": "Dekan",
+      "handle": "@dekanbro",
+      "avatarUrl": "/assets/fireside_dekan_avatar.jpg"
+    },
+    "backgroundUrl": "/assets/fireside_campfire.png",
+    "accent": "#F7B267",
+    "ember": "#E05243",
+    "text": "#FFF3DE",
+    "cards": [
+      {
+        "title": "AI gutted basic copywriting",
+        "body": "CJ estimates standalone copywriting demand dropped around ninety percent after ChatGPT, pushing agencies toward strategy, expertise, and quality.",
+        "imageUrl": "/assets/fireside_agentic_coding.png",
+        "audioUrl": "/assets/fireside_cj_miller_copywriting_tts_demand.mp3",
+        "durationMs": 12600
+      },
+      {
+        "title": "Human voice is the premium",
+        "body": "Generic AI content is everywhere. The premium is lived experience, expert perspective, and writing that does not feel over-polished.",
+        "imageUrl": "/assets/fireside_shared_state.png",
+        "audioUrl": "/assets/fireside_cj_miller_copywriting_tts_voice.mp3",
+        "durationMs": 10900
+      },
+      {
+        "title": "GEO is mostly good SEO",
+        "body": "AI search optimization is real, but the fundamentals still matter: structure, topical authority, backlinks, and readable service pages.",
+        "imageUrl": "/assets/fireside_open_source_security.png",
+        "audioUrl": "/assets/fireside_cj_miller_copywriting_tts_geo.mp3",
+        "durationMs": 11600
+      },
+      {
+        "title": "AI content has tells",
+        "body": "The group dug into em dash overload, not X but Y framing, polished sameness, and forced punchy sentence fragments.",
+        "imageUrl": "/assets/fireside_christmas_morning.png",
+        "audioUrl": "/assets/fireside_cj_miller_copywriting_tts_tells.mp3",
+        "durationMs": 10300
+      },
+      {
+        "title": "Trust moves back offline",
+        "body": "As AI outreach floods feeds and inboxes, conferences, in-person meetings, and relationship-driven channels may become more valuable again.",
+        "imageUrl": "/assets/fireside_campfire.png",
+        "audioUrl": "/assets/fireside_cj_miller_copywriting_tts_trust.mp3",
+        "durationMs": 11600
+      }
+    ],
+    "outro": {
+      "headline": "Watch the full interview",
+      "url": "portal.raidguild.org/events/67",
+      "audioUrl": "/assets/fireside_cj_miller_copywriting_tts_outro.mp3",
+      "durationMs": 9800
+    }
+  }
+}

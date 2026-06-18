@@ -1,0 +1,67 @@
+{
+  "composition": "FiresideRecapScene",
+  "outputKey": "firesides/spencer-personal-crm-recap.mp4",
+  "props": {
+    "title": "Spencer On Private Relationship Memory",
+    "subtitle": "Personal CRM, agentic coding loops, UX QA, and the atomized developer problem",
+    "introAudioUrl": "/assets/fireside_spencer_crm_tts_intro.mp3",
+    "introDurationMs": 10000,
+    "guest": {
+      "name": "Spencer",
+      "handle": "@spengrah",
+      "avatarUrl": "/assets/fireside_spengrah_avatar.jpg"
+    },
+    "host": {
+      "name": "Dekan",
+      "handle": "@dekanbro",
+      "avatarUrl": "/assets/fireside_dekan_avatar.jpg"
+    },
+    "backgroundUrl": "/assets/fireside_campfire.png",
+    "accent": "#F7B267",
+    "ember": "#E05243",
+    "text": "#FFF3DE",
+    "cards": [
+      {
+        "title": "Private relationship memory",
+        "body": "Spencer is building a self-hosted personal CRM to keep relationship context private while remembering birthdays, life events, follow-ups, and relationship history.",
+        "imageUrl": "/assets/fireside_shared_state.png",
+        "audioUrl": "/assets/fireside_spencer_crm_tts_memory.mp3",
+        "durationMs": 12800
+      },
+      {
+        "title": "Doer reviewer loop",
+        "body": "Claude Code coordinates the work, Codex-style reviewers check plans and implementations, and deterministic checks backstop the process.",
+        "imageUrl": "/assets/fireside_agentic_coding.png",
+        "audioUrl": "/assets/fireside_spencer_crm_tts_loop.mp3",
+        "durationMs": 13400
+      },
+      {
+        "title": "Context and verification",
+        "body": "The hard questions were context and trust: how do agents know enough, and how do humans know the agent did good work?",
+        "imageUrl": "/assets/fireside_open_source_security.png",
+        "audioUrl": "/assets/fireside_spencer_crm_tts_verification.mp3",
+        "durationMs": 12000
+      },
+      {
+        "title": "UX QA bottleneck",
+        "body": "Spencer is exploring agents that inspect human-facing interfaces, open issues, and eventually help fix what they find.",
+        "imageUrl": "/assets/fireside_agentic_coding.png",
+        "audioUrl": "/assets/fireside_spencer_crm_tts_uxqa.mp3",
+        "durationMs": 12700
+      },
+      {
+        "title": "The atomized developer",
+        "body": "Agents may make individuals more capable, but weaken the shared context, relationships, and collaboration that make project work meaningful.",
+        "imageUrl": "/assets/fireside_christmas_morning.png",
+        "audioUrl": "/assets/fireside_spencer_crm_tts_atomized.mp3",
+        "durationMs": 13900
+      }
+    ],
+    "outro": {
+      "headline": "Watch the full interview",
+      "url": "portal.raidguild.org",
+      "audioUrl": "/assets/fireside_spencer_crm_tts_outro.mp3",
+      "durationMs": 8200
+    }
+  }
+}
